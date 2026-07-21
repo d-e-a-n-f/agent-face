@@ -3,7 +3,7 @@
 import type { AgentTraceEvent } from "@agentface/core";
 import { useAgentRuntime } from "@agentface/react";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { styles } from "./styles.js";
 
 function describePayload(event: AgentTraceEvent): string {
@@ -41,10 +41,12 @@ interface TraceViewerProps {
 export function TraceViewer(props: TraceViewerProps): ReactNode {
   const runtime = useAgentRuntime();
   const [filter, setFilter] = useState("");
-  // props.version intentionally participates: each structural change pulls
-  // the latest buffer.
-  void props.version;
-  const events = runtime.getTraceEvents();
+  // The buffer is read in an effect keyed on version (not during render) so
+  // memoizing compilers see the dependency and refresh the list.
+  const [events, setEvents] = useState<readonly AgentTraceEvent[]>([]);
+  useEffect(() => {
+    setEvents(runtime.getTraceEvents());
+  }, [runtime, props.version]);
   const filtered =
     filter.trim() === ""
       ? events
