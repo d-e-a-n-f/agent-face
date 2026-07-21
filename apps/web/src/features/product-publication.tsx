@@ -97,6 +97,13 @@ function ShareClassManager({ getDomain, mutate }: DomainProps): null {
     name: "Create share class",
     description:
       "Create a share class under the product, inheriting its configuration (minimum subscription, fee schedule)",
+    recommend: {
+      when: () => getDomain().shareClasses.length === 0,
+      reason: "No share classes exist yet",
+      instruction:
+        "Create a Sterling institutional share class under Global Credit Fund II with a £5,000,000 minimum subscription, institutional fees, and the latest supplement attached",
+      priority: 10,
+    },
     input: fromZod(
       z.object({
         name: z.string().min(1).describe('e.g. "Sterling Institutional"'),
@@ -204,6 +211,20 @@ function ComplianceValidation({ getDomain, mutate }: DomainProps): null {
       "Run the compliance checks for a share class. Must pass before approval can be requested.",
     input: fromZod(z.object({ shareClassId: shareClassIdInput })),
     sensitivity: "internal",
+    recommend: {
+      when: () =>
+        getDomain().shareClasses.some(
+          (shareClass) => shareClass.validation.status === "not-run",
+        ),
+      reason: "A share class has not been validated yet",
+      instruction: () => {
+        const target = getDomain().shareClasses.find(
+          (shareClass) => shareClass.validation.status === "not-run",
+        );
+        return `Run compliance validation for ${target?.name ?? "the share class"}`;
+      },
+      priority: 9,
+    },
     execute: (input) => {
       let outcome: unknown;
       mutate((state) => {
@@ -245,6 +266,24 @@ function ApprovalWorkflow({ getDomain, mutate }: DomainProps): null {
         approver: z.string().min(1).describe('e.g. "Sarah"'),
       }),
     ),
+    recommend: {
+      when: () =>
+        getDomain().shareClasses.some(
+          (shareClass) =>
+            shareClass.validation.status === "passed" &&
+            shareClass.approval.status === "draft",
+        ),
+      reason: "A validated share class is awaiting sign-off",
+      instruction: () => {
+        const target = getDomain().shareClasses.find(
+          (shareClass) =>
+            shareClass.validation.status === "passed" &&
+            shareClass.approval.status === "draft",
+        );
+        return `Send ${target?.name ?? "the share class"} to Sarah for approval`;
+      },
+      priority: 8,
+    },
     preconditions: [
       {
         id: "validation-passed",
@@ -271,6 +310,20 @@ function ApprovalWorkflow({ getDomain, mutate }: DomainProps): null {
     input: fromZod(z.object({ shareClassId: shareClassIdInput })),
     sensitivity: "confidential",
     confirmation: "always",
+    recommend: {
+      when: () =>
+        getDomain().shareClasses.some(
+          (shareClass) => shareClass.approval.status === "pending",
+        ),
+      reason: "An approval request is pending",
+      instruction: () => {
+        const target = getDomain().shareClasses.find(
+          (shareClass) => shareClass.approval.status === "pending",
+        );
+        return `Approve ${target?.name ?? "the share class"}`;
+      },
+      priority: 7,
+    },
     preview: (input) => {
       const shareClass = getDomain().shareClasses.find(
         (candidate) => candidate.id === input.shareClassId,
@@ -363,6 +416,22 @@ function PublicationManager({ getDomain, mutate }: DomainProps): null {
     ),
     sensitivity: "confidential",
     confirmation: "always",
+    recommend: {
+      when: () =>
+        getDomain().shareClasses.some(
+          (shareClass) =>
+            isPublishable(shareClass) && shareClass.publications.length === 0,
+        ),
+      reason: "An approved share class is ready to publish",
+      instruction: () => {
+        const target = getDomain().shareClasses.find(
+          (shareClass) =>
+            isPublishable(shareClass) && shareClass.publications.length === 0,
+        );
+        return `Publish ${target?.name ?? "the share class"} to the Apollo and Wilshire workspaces`;
+      },
+      priority: 6,
+    },
     preconditions: [
       {
         id: "share-class-is-publishable",

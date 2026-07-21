@@ -22,6 +22,7 @@ export type {
   AgentDiscoveredSurface,
   AgentDiscoveryQuery,
   AgentDiscoveryResult,
+  AgentRecommendedAction,
   AgentResourceDescriptor,
   AgentResourceSnapshot,
   AgentRuntime,

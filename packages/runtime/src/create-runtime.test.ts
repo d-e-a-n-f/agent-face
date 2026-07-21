@@ -550,6 +550,87 @@ describe("createAgentRuntime", () => {
     });
   });
 
+  describe("recommendations", () => {
+    it("evaluates recommend closures against live state, in priority order", () => {
+      const { invoice, surface } = setupInvoice(runtime);
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "remind",
+          name: "Send reminder",
+          description: "Remind the customer",
+          input: sendInputSchema,
+          recommend: {
+            when: () => invoice.status === "sent",
+            reason: "The invoice was sent but not paid",
+            instruction: () => `Send a reminder about the ${invoice.status} invoice`,
+            priority: 5,
+          },
+          execute: () => ({ reminded: true }),
+        }),
+      });
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "archive",
+          name: "Archive",
+          description: "Archive the invoice",
+          input: sendInputSchema,
+          recommend: { when: () => invoice.status === "sent" },
+          execute: () => ({ archived: true }),
+        }),
+      });
+
+      // Draft: nothing recommends yet.
+      expect(runtime.getRecommendedActions()).toEqual([]);
+
+      invoice.status = "sent";
+      const recommended = runtime.getRecommendedActions();
+      expect(recommended).toHaveLength(2);
+      expect(recommended[0]).toMatchObject({
+        actionId: "remind",
+        name: "Send reminder",
+        reason: "The invoice was sent but not paid",
+        instruction: "Send a reminder about the sent invoice",
+        priority: 5,
+      });
+      // Default instruction falls back to the action name; default priority 0.
+      expect(recommended[1]).toMatchObject({
+        actionId: "archive",
+        instruction: "Archive",
+        priority: 0,
+      });
+    });
+
+    it("unavailable actions are never recommended, and throwing closures mean not-recommended", () => {
+      const { surface } = setupInvoice(runtime);
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "broken",
+          name: "Broken",
+          description: "Recommend closure throws",
+          input: sendInputSchema,
+          recommend: {
+            when: () => {
+              throw new Error("boom");
+            },
+          },
+          execute: () => ({}),
+        }),
+      });
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "hidden",
+          name: "Hidden",
+          description: "Recommended but unavailable",
+          input: sendInputSchema,
+          recommend: { when: () => true },
+          execute: () => ({}),
+        }),
+        isAvailable: () => false,
+      });
+      expect(runtime.getRecommendedActions()).toEqual([]);
+    });
+  });
+
   describe("inspection and subscription", () => {
     it("inspectSurface reports metadata, availability, and policy decisions", async () => {
       const { invoice, surface } = setupInvoice(runtime);

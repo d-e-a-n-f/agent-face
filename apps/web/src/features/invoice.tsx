@@ -215,6 +215,12 @@ function InvoiceFeature(): React.JSX.Element {
     input: sendInput,
     sensitivity: "confidential",
     confirmation: "always",
+    recommend: {
+      when: () =>
+        invoice.status === "draft" && validationIssues(invoice).length === 0,
+      reason: "The draft is valid and ready to send",
+      instruction: "Send the invoice to the customer",
+    },
     preconditions: [
       {
         id: "invoice-is-valid-draft",

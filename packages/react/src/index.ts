@@ -32,3 +32,6 @@ export type { UseAgentResourceOptions } from "./use-agent-resource.js";
 
 export { useAgentAction } from "./use-agent-action.js";
 export type { UseAgentActionOptions } from "./use-agent-action.js";
+
+export { useAgentRecommendations } from "./use-agent-recommendations.js";
+export type { UseAgentRecommendationsOptions } from "./use-agent-recommendations.js";

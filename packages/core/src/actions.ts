@@ -30,6 +30,27 @@ export type AgentConfirmationRule<TInput = unknown> =
       readonly reason?: string;
     };
 
+/**
+ * Marks an action as a recommended next step while `when` holds against
+ * current application state. UIs surface recommendations as one-tap next
+ * steps; they re-evaluate as state changes. The closures stay local and are
+ * never serialised — only the evaluated snapshot travels.
+ */
+export interface AgentActionRecommendation {
+  /** Whether this action is the sensible next step right now. */
+  readonly when: () => boolean;
+  /** Why it is recommended, shown to the user. */
+  readonly reason?: string;
+  /**
+   * The natural-language instruction a UI sends to the assistant to run it
+   * (so recommendations flow through the full policy/confirmation path).
+   * Defaults to the action name. A function form supports dynamic values.
+   */
+  readonly instruction?: string | (() => string);
+  /** Ordering among concurrent recommendations; higher first. Default 0. */
+  readonly priority?: number;
+}
+
 /** One intended state change shown to the user before execution. */
 export interface AgentActionChange {
   /** Path of the affected state, e.g. `"status"`. */
@@ -99,6 +120,8 @@ export interface AgentActionDefinition<
   readonly confirmation?: AgentConfirmationRule<TInput>;
   readonly preconditions?: readonly AgentPrecondition[];
   readonly tags?: readonly string[];
+  /** Marks this action as a suggested next step while its condition holds. */
+  readonly recommend?: AgentActionRecommendation;
   readonly preview?: (input: TInput) => TPreview | Promise<TPreview>;
   readonly execute: (input: TInput) => TResult | Promise<TResult>;
 }

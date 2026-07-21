@@ -121,6 +121,12 @@ function OnboardingFeature(): React.JSX.Element {
     input: emptyInput,
     confirmation: "never",
     isAvailable: notSubmitted,
+    recommend: {
+      when: () => form.formState.isDirty && metaRef.current.savedAt === null,
+      reason: "There are unsaved changes",
+      instruction: "Save the onboarding draft",
+      priority: 5,
+    },
     execute: () => {
       const savedAt = new Date().toISOString();
       updateMeta({ savedAt });
@@ -136,6 +142,12 @@ function OnboardingFeature(): React.JSX.Element {
     input: emptyInput,
     sensitivity: "confidential",
     confirmation: "always",
+    recommend: {
+      when: () => form.formState.isValid,
+      reason: "Every section is complete and valid",
+      instruction: "Submit the onboarding form",
+      priority: 10,
+    },
     preconditions: [
       {
         id: "form-is-valid",

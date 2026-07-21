@@ -2,6 +2,7 @@
 
 import type {
   AgentActionPreview,
+  AgentActionRecommendation,
   AgentConfirmationRule,
   AgentInputSchema,
   AgentPrecondition,
@@ -31,6 +32,8 @@ export interface UseAgentActionOptions<
   readonly execute: (input: TInput) => TResult | Promise<TResult>;
   /** Whether the action is currently invokable. Defaults to always available. */
   readonly isAvailable?: () => boolean;
+  /** Marks this action as a suggested next step while its condition holds. */
+  readonly recommend?: AgentActionRecommendation;
   /** Action-level revision, when finer-grained than the surface revision. */
   readonly getRevision?: () => number;
 }
@@ -117,6 +120,27 @@ export function useAgentAction<
       }),
     );
 
+    // Recommendation closures route through the latest render like every
+    // other live behaviour.
+    const recommend: AgentActionRecommendation | undefined =
+      initial.recommend === undefined
+        ? undefined
+        : {
+            when: () => latest.current.recommend?.when() ?? false,
+            ...(initial.recommend.reason !== undefined
+              ? { reason: initial.recommend.reason }
+              : {}),
+            instruction: () => {
+              const current = latest.current.recommend;
+              return typeof current?.instruction === "function"
+                ? current.instruction()
+                : (current?.instruction ?? latest.current.name);
+            },
+            ...(initial.recommend.priority !== undefined
+              ? { priority: initial.recommend.priority }
+              : {}),
+          };
+
     const previewDeclared = initial.preview !== undefined;
     let registration;
     try {
@@ -135,6 +159,7 @@ export function useAgentAction<
         ...(initial.tags !== undefined ? { tags: initial.tags } : {}),
         ...(confirmation !== undefined ? { confirmation } : {}),
         ...(preconditions !== undefined ? { preconditions } : {}),
+        ...(recommend !== undefined ? { recommend } : {}),
         ...(previewDeclared
           ? {
               preview: async (input: TInput): Promise<AgentActionPreview> =>

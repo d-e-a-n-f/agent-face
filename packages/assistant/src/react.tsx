@@ -1,6 +1,6 @@
 "use client";
 
-import { useAgentRuntime } from "@agentface/react";
+import { useAgentRecommendations, useAgentRuntime } from "@agentface/react";
 import type { PreparedAgentAction } from "@agentface/runtime";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -309,10 +309,6 @@ function floatStyle(
   };
 }
 
-interface Suggestion {
-  readonly label: string;
-}
-
 /**
  * The shipped assistant chat widget: a floating launcher that opens a chat
  * thread bound to the current page's mounted surfaces, with inline
@@ -338,11 +334,12 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
     suggestions: showSuggestions = true,
     ...hookOptions
   } = props;
-  const runtime = useAgentRuntime();
   const assistant = useAgentFaceAssistant(hookOptions);
   const [open, setOpen] = useState(defaultOpen);
   const [input, setInput] = useState("");
-  const [suggestions, setSuggestions] = useState<readonly Suggestion[]>([]);
+  // Live next-step recommendations: re-evaluated on runtime events and a
+  // light poll, so buttons appear and change as data fills in.
+  const recommendations = useAgentRecommendations();
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
   // The input stays locked for the whole run — including while a
@@ -355,27 +352,6 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
       container.scrollTop = container.scrollHeight;
     }
   }, [assistant.messages, assistant.busy, assistant.pendingConfirmation]);
-
-  useEffect(() => {
-    if (!open || !showSuggestions) {
-      return;
-    }
-    let cancelled = false;
-    void runtime.discover().then(({ surfaces }) => {
-      if (cancelled) {
-        return;
-      }
-      setSuggestions(
-        surfaces
-          .flatMap((surface) => surface.actions)
-          .slice(0, 3)
-          .map((action) => ({ label: action.name })),
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [runtime, open, showSuggestions, assistant.busy]);
 
   async function submit(): Promise<void> {
     const text = input.trim();
@@ -493,17 +469,18 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
             </div>
           ) : null}
 
-          {showSuggestions && suggestions.length > 0 && !locked ? (
+          {showSuggestions && recommendations.length > 0 && !locked ? (
             <div style={styles.suggestions}>
-              {suggestions.map((suggestion) => (
+              {recommendations.map((recommendation) => (
                 <button
-                  key={suggestion.label}
+                  key={`${recommendation.instanceId}:${recommendation.actionId}`}
                   type="button"
                   style={styles.chip}
                   data-testid="assistant-suggestion"
-                  onClick={() => setInput(suggestion.label)}
+                  title={recommendation.reason}
+                  onClick={() => void assistant.send(recommendation.instruction)}
                 >
-                  {suggestion.label}
+                  ✦ {recommendation.name}
                 </button>
               ))}
             </div>

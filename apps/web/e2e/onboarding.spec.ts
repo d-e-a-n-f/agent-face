@@ -10,6 +10,10 @@ test("assistant fills the onboarding form and saves a draft without submitting",
 }) => {
   await page.goto("/examples/onboarding");
   await page.getByRole("button", { name: "Open assistant" }).click();
+
+  // Nothing to recommend yet: the form is empty and untouched.
+  await expect(page.getByTestId("assistant-suggestion")).toHaveCount(0);
+
   await page
     .getByLabel("Assistant instruction")
     .fill(
@@ -33,6 +37,12 @@ test("assistant fills the onboarding form and saves a draft without submitting",
   );
   await expect(page.getByTestId("onboarding-status")).not.toContainText(
     "Submitted",
+  );
+
+  // Recommendations re-evaluated as the data filled in: the form is now
+  // valid, so submitting is the suggested next step.
+  await expect(page.getByTestId("assistant-suggestion")).toContainText(
+    "Submit onboarding",
   );
 
   // The human can still edit the agent-filled form…

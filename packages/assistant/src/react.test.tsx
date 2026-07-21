@@ -42,6 +42,11 @@ function setupRuntime(): { runtime: AgentRuntime; state: { sent: boolean } } {
       description: "Send it",
       input: emptySchema,
       confirmation: "always",
+      recommend: {
+        when: () => !state.sent,
+        reason: "The invoice is ready to send",
+        instruction: "Send the invoice to the customer",
+      },
       preview: () => ({ summary: "Send INV-1 to the customer" }),
       execute: () => {
         state.sent = true;
@@ -145,9 +150,9 @@ describe("AgentFaceAssistant widget", () => {
     expect(state.sent).toBe(false);
   });
 
-  it("starts as a floating launcher and offers action suggestions when opened", async () => {
+  it("recommendation buttons run the instruction and re-evaluate as state changes", async () => {
     const user = userEvent.setup();
-    const { runtime } = setupRuntime();
+    const { runtime, state } = setupRuntime();
     render(
       <AgentFaceProvider runtime={runtime}>
         <AgentFaceAssistant adapter={sendScript()} title="Ask Acme" />
@@ -155,11 +160,22 @@ describe("AgentFaceAssistant widget", () => {
     );
     expect(screen.queryByLabelText("Assistant instruction")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Open assistant" }));
+
+    // The app declared send as the recommended next step.
     const chip = await screen.findByTestId("assistant-suggestion");
-    expect(chip.textContent).toBe("Send invoice");
+    expect(chip.textContent).toContain("Send invoice");
+    expect(chip.title).toBe("The invoice is ready to send");
+
+    // One tap runs it through the assistant — full confirmation flow.
     await user.click(chip);
-    expect(
-      screen.getByLabelText<HTMLInputElement>("Assistant instruction").value,
-    ).toBe("Send invoice");
+    await user.click(await screen.findByRole("button", { name: "Confirm" }));
+    await waitFor(() => {
+      expect(state.sent).toBe(true);
+    });
+
+    // Recommendations re-evaluate: sent, so no longer recommended.
+    await waitFor(() => {
+      expect(screen.queryByTestId("assistant-suggestion")).toBeNull();
+    });
   });
 });

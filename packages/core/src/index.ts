@@ -22,6 +22,7 @@ export type {
   AgentActionChange,
   AgentActionDefinition,
   AgentActionPreview,
+  AgentActionRecommendation,
   AgentActionResult,
   AgentConfirmationRule,
   AgentPrecondition,

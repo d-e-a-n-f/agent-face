@@ -218,6 +218,23 @@ export interface AgentActionExecutionResult {
   readonly traceId: AgentTraceId;
 }
 
+/**
+ * An action currently recommended as a next step: the evaluated, serialisable
+ * snapshot of a definition's `recommend` closure. Sorted by priority (higher
+ * first) in `getRecommendedActions`.
+ */
+export interface AgentRecommendedAction {
+  readonly instanceId: AgentSurfaceInstanceId;
+  readonly actionId: AgentActionId;
+  /** The action's human-readable name (button label). */
+  readonly name: string;
+  /** Why it is recommended right now. */
+  readonly reason?: string;
+  /** The instruction a UI sends to the assistant to run it. */
+  readonly instruction: string;
+  readonly priority: number;
+}
+
 /** Receives every runtime event as it is emitted. */
 export type AgentRuntimeListener = (event: AgentTraceEvent) => void;
 
@@ -262,4 +279,12 @@ export interface AgentRuntime {
   subscribe(listener: AgentRuntimeListener): () => void;
   /** The in-memory trace buffer, oldest first. */
   getTraceEvents(): readonly AgentTraceEvent[];
+
+  /**
+   * Evaluates every mounted action's `recommend` condition against current
+   * state and returns the ones that hold (and are available), highest
+   * priority first. Cheap and synchronous — safe to call on every state
+   * change.
+   */
+  getRecommendedActions(): readonly AgentRecommendedAction[];
 }

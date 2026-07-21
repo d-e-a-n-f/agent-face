@@ -23,6 +23,7 @@ import { createPolicyEngine } from "@agentface/policy";
 import type {
   AgentActionDescriptor,
   AgentActionExecutionResult,
+  AgentRecommendedAction,
   AgentCapabilityRegistration,
   AgentDiscoveredSurface,
   AgentDiscoveryQuery,
@@ -83,6 +84,12 @@ interface StoredResource {
   getRevision: (() => number) | undefined;
 }
 
+interface EvaluatedRecommendation {
+  readonly reason?: string;
+  readonly instruction: string;
+  readonly priority: number;
+}
+
 interface StoredAction {
   descriptor: AgentActionDescriptor;
   sensitivity: AgentSensitivity | undefined;
@@ -90,6 +97,8 @@ interface StoredAction {
   prepare: (raw: unknown) => PreparedInvocation;
   isAvailable: () => boolean;
   getRevision: (() => number) | undefined;
+  /** Evaluates the definition's recommend closure; null when not recommended. */
+  evaluateRecommendation: (() => EvaluatedRecommendation | null) | undefined;
 }
 
 interface StoredSurface {
@@ -515,6 +524,26 @@ export function createAgentRuntime(
         },
         isAvailable: registration.isAvailable ?? (() => true),
         getRevision: registration.getRevision,
+        evaluateRecommendation:
+          definition.recommend === undefined
+            ? undefined
+            : () => {
+                const recommend = definition.recommend;
+                if (recommend === undefined || !recommend.when()) {
+                  return null;
+                }
+                const instruction =
+                  typeof recommend.instruction === "function"
+                    ? recommend.instruction()
+                    : (recommend.instruction ?? definition.name);
+                return {
+                  ...(recommend.reason !== undefined
+                    ? { reason: recommend.reason }
+                    : {}),
+                  instruction,
+                  priority: recommend.priority ?? 0,
+                };
+              },
       };
     };
 
@@ -1051,6 +1080,36 @@ export function createAgentRuntime(
     }
   }
 
+  function getRecommendedActions(): readonly AgentRecommendedAction[] {
+    const recommendations: AgentRecommendedAction[] = [];
+    for (const surface of surfaces.values()) {
+      for (const action of surface.actions.values()) {
+        if (action.evaluateRecommendation === undefined) {
+          continue;
+        }
+        try {
+          if (!action.isAvailable()) {
+            continue;
+          }
+          const evaluated = action.evaluateRecommendation();
+          if (evaluated !== null) {
+            recommendations.push({
+              instanceId: surface.instanceId,
+              actionId: action.descriptor.id,
+              name: action.descriptor.name,
+              ...evaluated,
+            });
+          }
+        } catch {
+          // A throwing closure means "not recommended", never a crash.
+        }
+      }
+    }
+    return recommendations.sort(
+      (a, b) => b.priority - a.priority || a.name.localeCompare(b.name),
+    );
+  }
+
   return {
     registerSurface,
     unregisterSurface,
@@ -1071,5 +1130,6 @@ export function createAgentRuntime(
     getTraceEvents() {
       return [...traceEvents];
     },
+    getRecommendedActions,
   };
 }
