@@ -20,5 +20,10 @@ export default defineConfig({
     command: "pnpm dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
+    env: {
+      ...process.env,
+      // Deterministic assistant in e2e; no real model calls in CI.
+      NEXT_PUBLIC_AGENTFACE_MOCK: "1",
+    },
   },
 });

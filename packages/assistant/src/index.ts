@@ -24,6 +24,18 @@ export type {
 export { createMockModelAdapter } from "./mock.js";
 export type { MockScriptStep } from "./mock.js";
 
+export {
+  createHttpModelAdapter,
+  createModelEndpoint,
+  DEFAULT_ASSISTANT_ENDPOINT,
+} from "./http.js";
+export type {
+  HttpModelAdapterOptions,
+  ModelAdapterSource,
+  ModelEndpoint,
+  ModelEndpointResult,
+} from "./http.js";
+
 export type {
   AgentModelAdapter,
   AgentModelRequest,

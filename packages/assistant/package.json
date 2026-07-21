@@ -14,6 +14,10 @@
     "./bedrock": {
       "types": "./dist/bedrock.d.ts",
       "default": "./dist/bedrock.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
     }
   },
   "files": [
@@ -38,13 +42,29 @@
     "@anthropic-ai/bedrock-sdk": "^0.32.0",
     "eslint": "^9.31.0",
     "typescript": "5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@agentface/react": "workspace:*",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "jsdom": "^26.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "peerDependencies": {
-    "@anthropic-ai/bedrock-sdk": ">=0.20.0"
+    "@anthropic-ai/bedrock-sdk": ">=0.20.0",
+    "@agentface/react": "workspace:*",
+    "react": "^19"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/bedrock-sdk": {
+      "optional": true
+    },
+    "@agentface/react": {
+      "optional": true
+    },
+    "react": {
       "optional": true
     }
   }
