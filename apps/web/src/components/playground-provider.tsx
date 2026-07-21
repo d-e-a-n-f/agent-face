@@ -7,9 +7,9 @@ import { AgentFaceProvider } from "@agentface/react";
 import { createAgentRuntime } from "@agentface/runtime";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { createDemoAdapter } from "@/lib/demo-adapter";
+import { createE2eMockAdapter } from "@/lib/e2e-mock-adapter";
 
-// CI runs the deterministic demo adapter; everywhere else the shipped
+// CI runs the deterministic e2e mock adapter; everywhere else the shipped
 // widget defaults to Claude via the /api/agentface route.
 const mockEnabled = process.env.NEXT_PUBLIC_AGENTFACE_MOCK === "1";
 
@@ -30,8 +30,8 @@ export function PlaygroundProvider({
       },
     }),
   );
-  const [demoAdapter] = useState(() =>
-    mockEnabled ? createDemoAdapter() : null,
+  const [mockAdapter] = useState(() =>
+    mockEnabled ? createE2eMockAdapter() : null,
   );
   return (
     <AgentFaceProvider
@@ -42,7 +42,7 @@ export function PlaygroundProvider({
       <div className="flex-1">{children}</div>
       <AgentFaceAssistant
         title="Assistant"
-        {...(demoAdapter !== null ? { adapter: demoAdapter } : {})}
+        {...(mockAdapter !== null ? { adapter: mockAdapter } : {})}
       />
       {/* Right clearance keeps the DevTools toggle out from under the
           floating assistant launcher. */}

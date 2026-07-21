@@ -161,7 +161,7 @@ const styles = {
   panel: {
     fontFamily: "ui-sans-serif, system-ui, sans-serif",
     fontSize: 13,
-    width: 360,
+    width: 400,
     maxWidth: "calc(100vw - 32px)",
     display: "flex",
     flexDirection: "column",
@@ -189,16 +189,51 @@ const styles = {
     color: "#5b5878",
   },
   messages: {
-    maxHeight: 320,
+    minHeight: 80,
+    maxHeight: "min(480px, 60vh)",
     overflowY: "auto",
     padding: 12,
     display: "flex",
     flexDirection: "column",
-    gap: 6,
+    gap: 8,
   },
-  userText: { fontWeight: 600 },
-  assistantText: { color: "#3a3852" },
-  toolLine: { color: "#807d99", fontSize: 11 },
+  emptyState: { color: "#807d99", textAlign: "center", margin: "24px 0" },
+  userBubble: {
+    alignSelf: "flex-end",
+    maxWidth: "85%",
+    background: "#7b6ff0",
+    color: "#fff",
+    borderRadius: "14px 14px 4px 14px",
+    padding: "7px 12px",
+    margin: 0,
+    whiteSpace: "pre-wrap",
+  },
+  assistantBubble: {
+    alignSelf: "flex-start",
+    maxWidth: "85%",
+    background: "#f4f3f8",
+    color: "#2a2840",
+    borderRadius: "14px 14px 14px 4px",
+    padding: "7px 12px",
+    margin: 0,
+    whiteSpace: "pre-wrap",
+  },
+  toolLine: {
+    alignSelf: "flex-start",
+    color: "#807d99",
+    fontSize: 11,
+    margin: "0 0 0 4px",
+  },
+  workingRow: {
+    alignSelf: "flex-start",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    background: "#f4f3f8",
+    borderRadius: "14px 14px 14px 4px",
+    padding: "8px 12px",
+    color: "#5b5878",
+  },
   confirmation: {
     margin: "0 12px",
     border: "1px solid #ecc46f",
@@ -308,6 +343,18 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
   const [open, setOpen] = useState(defaultOpen);
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState<readonly Suggestion[]>([]);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+
+  // The input stays locked for the whole run — including while a
+  // confirmation card is waiting on the user.
+  const locked = assistant.busy;
+
+  useEffect(() => {
+    const container = messagesRef.current;
+    if (container !== null) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [assistant.messages, assistant.busy, assistant.pendingConfirmation]);
 
   useEffect(() => {
     if (!open || !showSuggestions) {
@@ -354,9 +401,19 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
               ✕
             </button>
           </div>
-          <div style={styles.messages} data-testid="assistant-messages">
+          <style>{`@keyframes agentface-dot { 0%, 80%, 100% { opacity: 0.25 } 40% { opacity: 1 } }`}</style>
+          <div
+            ref={messagesRef}
+            style={styles.messages}
+            data-testid="assistant-messages"
+          >
+            {assistant.messages.length === 0 ? (
+              <p style={styles.emptyState}>
+                Ask me to do something on this page.
+              </p>
+            ) : null}
             {assistant.messages.map((message, messageIndex) => (
-              <div key={messageIndex}>
+              <div key={messageIndex} style={{ display: "contents" }}>
                 {message.content.map((part, partIndex) => {
                   if (part.type === "text") {
                     return (
@@ -364,8 +421,8 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
                         key={partIndex}
                         style={
                           message.role === "user"
-                            ? styles.userText
-                            : styles.assistantText
+                            ? styles.userBubble
+                            : styles.assistantBubble
                         }
                       >
                         {part.text}
@@ -381,13 +438,31 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
                   }
                   return (
                     <p key={partIndex} style={styles.toolLine}>
-                      ← {part.isError === true ? "error" : "ok"}
+                      ← {part.isError === true ? "error" : "done"}
                     </p>
                   );
                 })}
               </div>
             ))}
-            {assistant.busy ? <p style={styles.toolLine}>Working…</p> : null}
+            {assistant.busy && assistant.pendingConfirmation === null ? (
+              <div style={styles.workingRow} aria-label="Assistant is working">
+                <span>Working</span>
+                {[0, 1, 2].map((dot) => (
+                  <span
+                    key={dot}
+                    style={{
+                      display: "inline-block",
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: "#5b5878",
+                      animation: "agentface-dot 1.2s infinite",
+                      animationDelay: `${dot * 0.2}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {assistant.pendingConfirmation !== null ? (
@@ -418,7 +493,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
             </div>
           ) : null}
 
-          {showSuggestions && suggestions.length > 0 ? (
+          {showSuggestions && suggestions.length > 0 && !locked ? (
             <div style={styles.suggestions}>
               {suggestions.map((suggestion) => (
                 <button
@@ -436,10 +511,20 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
 
           <div style={styles.inputRow}>
             <input
-              style={styles.input}
+              style={{
+                ...styles.input,
+                ...(locked ? { opacity: 0.5, background: "#f4f3f8" } : {}),
+              }}
               aria-label="Assistant instruction"
-              placeholder={placeholder}
+              placeholder={
+                locked
+                  ? assistant.pendingConfirmation !== null
+                    ? "Waiting for your confirmation above…"
+                    : "Working — please wait…"
+                  : placeholder
+              }
               value={input}
+              disabled={locked}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -451,12 +536,12 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
               type="button"
               style={{
                 ...styles.sendButton,
-                ...(assistant.busy ? { opacity: 0.5 } : {}),
+                ...(locked ? { opacity: 0.5, cursor: "not-allowed" } : {}),
               }}
-              disabled={assistant.busy}
+              disabled={locked}
               onClick={() => void submit()}
             >
-              Send
+              {locked ? "Working…" : "Send"}
             </button>
           </div>
         </div>

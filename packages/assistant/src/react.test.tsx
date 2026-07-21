@@ -97,6 +97,37 @@ describe("AgentFaceAssistant widget", () => {
     await screen.findByText("Sent.");
   });
 
+  it("locks the input and send button while the run awaits confirmation", async () => {
+    const user = userEvent.setup();
+    const { runtime } = setupRuntime();
+    render(
+      <AgentFaceProvider runtime={runtime}>
+        <AgentFaceAssistant adapter={sendScript()} defaultOpen />
+      </AgentFaceProvider>,
+    );
+    await user.type(screen.getByLabelText("Assistant instruction"), "Send it");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await screen.findByTestId("confirmation-card");
+    const input = screen.getByLabelText<HTMLInputElement>(
+      "Assistant instruction",
+    );
+    expect(input.disabled).toBe(true);
+    expect(input.placeholder).toContain("Waiting for your confirmation");
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Working…" })
+        .disabled,
+    ).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText<HTMLInputElement>("Assistant instruction")
+          .disabled,
+      ).toBe(false);
+    });
+  });
+
   it("declining leaves the action unexecuted", async () => {
     const user = userEvent.setup();
     const { runtime, state } = setupRuntime();

@@ -5,13 +5,19 @@ import type {
 } from "@agentface/assistant";
 
 /**
+ * TEST FIXTURE — never active outside e2e. The real widget default is the
+ * LLM endpoint; this adapter exists solely so Playwright can drive the
+ * assistant deterministically (ADR 0006: no real model calls in CI). It is
+ * bundled only behind NEXT_PUBLIC_AGENTFACE_MOCK=1, which only the
+ * Playwright web server sets.
+ *
  * A stateless deterministic adapter for CI (enabled via
  * NEXT_PUBLIC_AGENTFACE_MOCK=1): pattern-matches on the conversation instead
  * of keeping script state, so it survives multiple sends and both
  * confirm/decline outcomes. Drives the MISSION Phase-6 acceptance
  * instruction against the invoice example.
  */
-export function createDemoAdapter(): AgentModelAdapter {
+export function createE2eMockAdapter(): AgentModelAdapter {
   return {
     complete(request: AgentModelRequest) {
       const findTool = (suffix: string) =>
