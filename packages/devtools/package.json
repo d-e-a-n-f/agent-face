@@ -25,21 +25,22 @@
   },
   "dependencies": {
     "@agentface/core": "workspace:*",
-    "@agentface/runtime": "workspace:*",
-    "@agentface/react": "workspace:*"
+    "@agentface/react": "workspace:*",
+    "@agentface/runtime": "workspace:*"
   },
   "devDependencies": {
     "@agentface/eslint-config": "workspace:*",
     "@agentface/typescript-config": "workspace:*",
-    "eslint": "^9.31.0",
-    "typescript": "5.9.2",
-    "vitest": "^3.2.4",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9.31.0",
     "jsdom": "^26.1.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
     "react": "^19"

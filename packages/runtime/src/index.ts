@@ -40,3 +40,12 @@ export type {
   RegisterSurfaceInput,
   UpdateResourceInput,
 } from "./types.js";
+
+// Policy types that appear in runtime request/snapshot shapes, re-exported so
+// consumers of the runtime (react, devtools, testing) need no direct policy
+// dependency.
+export type {
+  AgentPolicyDecision,
+  AgentPolicyEngine,
+  PrincipalContext,
+} from "@agentface/policy";
