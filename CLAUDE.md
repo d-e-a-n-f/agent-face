@@ -59,7 +59,8 @@ Packages must never import from the playground app. `@agentface/assistant` (mode
 
 ### Implementation standards
 
-- TypeScript strict mode with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; no `any` in public APIs; named exports only in library packages; explicit package exports; TSDoc on public APIs.
+- TypeScript strict mode with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; named exports only in library packages; explicit package exports; TSDoc on public APIs.
+- **Maximum type safety everywhere** (standing rule): no `any`, and avoid `unknown` wherever a generic or precise union can carry the real type. Thread generics through APIs; model JSON-safe data as `JsonValue` (from `@agentface/core`) rather than `unknown`; `readonly` contract fields; discriminated unions with compile-time exhaustiveness checks; `unknown` only at genuine trust boundaries like `parse(input: unknown)`. Add type-level tests (`expectTypeOf`) alongside runtime tests.
 - AgentFace registration is client-side: components using the hooks need `"use client"`. Do not attempt React Server Component registration support.
 - Record significant design choices as ADRs in `docs/decisions/` (see MISSION.md §22 for the initial set).
 - Follow the exact implementation order in MISSION.md §26. The first vertical slice is the invoice example (`/examples/invoice`) operated end-to-end through DevTools — do not skip ahead to model/assistant integration.
