@@ -319,12 +319,73 @@ function crossPageStep(request: AgentModelRequest): AgentModelResponse {
   return finish("Start on /examples/customer-table for the cross-page demo.");
 }
 
+
+/** Scenario 4: fill the onboarding form section by section; save, don't submit. */
+function onboardingStep(request: AgentModelRequest): AgentModelResponse {
+  if (findResult(request, "__save-draft") !== undefined) {
+    return finish(
+      "Draft saved. I have filled in the company, address, and contact sections — review and edit anything, then submit when you're ready. I did NOT submit it, as requested.",
+    );
+  }
+  const steps: readonly {
+    readonly suffix: string;
+    readonly input: unknown;
+    readonly narration: string;
+  }[] = [
+    {
+      suffix: "__fill-company",
+      input: {
+        name: "Northshore Limited",
+        registrationNumber: "09876543",
+        country: "United Kingdom",
+      },
+      narration: "Filling in the company details.",
+    },
+    {
+      suffix: "__fill-address",
+      input: { street: "1 Harbour Street", city: "London", postcode: "EC2A 4BX" },
+      narration: "Filling in the registered address.",
+    },
+    {
+      suffix: "__fill-contact",
+      input: { name: "Maya Chen", email: "maya@northshore.example" },
+      narration: "Filling in the primary contact.",
+    },
+    {
+      suffix: "__save-draft",
+      input: {},
+      narration: "Saving the draft — not submitting.",
+    },
+  ];
+  for (const step of steps) {
+    if (findResult(request, step.suffix) === undefined) {
+      const tool = findTool(request, step.suffix);
+      if (tool === undefined) {
+        const navigate = findTool(request, "__navigate");
+        if (navigate !== undefined) {
+          return call(
+            navigate,
+            { path: "/examples/onboarding" },
+            "Opening the onboarding screen.",
+          );
+        }
+        return finish("Open /examples/onboarding and try again.");
+      }
+      return call(tool, step.input, step.narration);
+    }
+  }
+  return finish("Draft saved.");
+}
+
 export function createE2eMockAdapter(): AgentModelAdapter {
   return {
     complete(request: AgentModelRequest): Promise<AgentModelResponse> {
       const instruction = userInstruction(request);
       if (instruction.includes("share class")) {
         return Promise.resolve(publicationStep(request));
+      }
+      if (instruction.includes("northshore")) {
+        return Promise.resolve(onboardingStep(request));
       }
       if (instruction.includes("highest-value")) {
         return Promise.resolve(crossPageStep(request));

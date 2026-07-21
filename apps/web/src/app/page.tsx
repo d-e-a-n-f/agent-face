@@ -12,9 +12,17 @@ const flows: readonly Example[] = [
     href: "/examples/product-publication",
     title: "Product publication",
     description:
-      "The showcase flow: set up a share class, configure it, pass compliance, get sign-off, publish to workspaces — with confirmation gates and honest partial failure.",
+      "The agent-as-PRIMARY-interface flow: the screen is read-only status; setting up, validating, approving, and publishing a share class all happens through the agent — with confirmation gates and honest partial failure.",
     instruction:
       "Create a Sterling institutional share class under Global Credit Fund II… and publish it to Apollo and Wilshire once approved.",
+  },
+  {
+    href: "/examples/onboarding",
+    title: "Client onboarding",
+    description:
+      "The agent-as-HELPER flow: a real form (shadcn + react-hook-form) the human owns. The assistant fills it through the same form state; you review, edit, and submit.",
+    instruction:
+      "Prepare an onboarding record for Northshore Limited — company number 09876543, UK, 1 Harbour Street, London EC2A 4BX, contact Maya Chen (maya@northshore.example). Save a draft but do not submit.",
   },
   {
     href: "/examples/invoice",

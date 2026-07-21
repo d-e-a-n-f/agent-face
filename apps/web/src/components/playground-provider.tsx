@@ -50,6 +50,10 @@ export function PlaygroundProvider({
           },
           { path: "/examples/invoice", description: "Invoice editor" },
           {
+            path: "/examples/onboarding",
+            description: "Client onboarding form (agent fills, human owns)",
+          },
+          {
             path: "/examples/product-publication",
             description: "Share class creation, approval, and publication",
           },
