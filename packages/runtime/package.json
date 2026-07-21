@@ -1,0 +1,37 @@
+{
+  "name": "@agentface/runtime",
+  "version": "0.1.0",
+  "description": "In-memory AgentFace runtime: surfaces, resources, actions, traces",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agentface/core": "workspace:*",
+    "@agentface/policy": "workspace:*"
+  },
+  "devDependencies": {
+    "@agentface/eslint-config": "workspace:*",
+    "@agentface/typescript-config": "workspace:*",
+    "eslint": "^9.31.0",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
