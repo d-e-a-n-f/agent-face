@@ -41,10 +41,16 @@ Every human-facing feature can expose an **Agent Surface**: identity, entity con
               │                 action lifecycle, traces; imports core + policy
               ├─► @agentface/react     — Provider/AgentSurface/hooks; imports core + runtime
               ├─► @agentface/testing   — test runtime & helpers; imports core + policy + runtime
-              └─► @agentface/devtools  — embeddable dev panel; imports core + runtime + react
+              ├─► @agentface/devtools  — embeddable dev panel; imports core + runtime + react
+              └─► @agentface/assistant — model adapters + assistant loop; imports core + runtime
+                      │   entries: /bedrock (Claude via AWS Bedrock, server-side only),
+                      │   /react (useAgentFaceAssistant hook + floating <AgentFaceAssistant/> widget)
+                      └─► @agentface/next — provider-neutral assistant route handler
+                          (createAgentFaceRouteHandler({ adapter }) — adapter REQUIRED;
+                          Bedrock is only the playground's choice, wired in its route file)
 ```
 
-Packages must never import from the playground app. `@agentface/assistant` (model adapters) comes only after the runtime is provably operable through DevTools without an LLM — build a deterministic mock adapter before any real provider.
+Packages must never import from the playground app. Assistant rules: the model never calls application closures — flow is always model → adapter → assistant loop → runtime (policy/validation/confirmation) → action; confirmation belongs to the user and is never a model tool; `AgentModelRequest`/`Response` stay JSON-serialisable (the browser loop talks to a server-side model endpoint, default `/api/agentface`); CI only ever uses `createMockModelAdapter` — never a real model.
 
 ### Key runtime invariants
 
