@@ -42,10 +42,13 @@ export function PlaygroundProvider({
       <div className="flex-1">{children}</div>
       <AgentFaceAssistant
         title="Assistant"
-        position="bottom-left"
         {...(demoAdapter !== null ? { adapter: demoAdapter } : {})}
       />
-      <AgentFaceDevTools />
+      {/* Right clearance keeps the DevTools toggle out from under the
+          floating assistant launcher. */}
+      <div className="pr-40">
+        <AgentFaceDevTools />
+      </div>
     </AgentFaceProvider>
   );
 }
