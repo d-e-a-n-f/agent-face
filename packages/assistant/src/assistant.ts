@@ -85,7 +85,7 @@ function describeSurfaces(
     instanceId: surface.instance.instanceId,
     face: {
       id: surface.instance.face.id,
-      name: surface.instance.face.name,
+      name: surface.instance.face.name ?? surface.instance.face.id,
       description: surface.instance.face.description,
     },
     ...(surface.instance.entity !== undefined
@@ -155,7 +155,7 @@ function buildTools(surfaces: readonly AgentDiscoveredSurface[]): ToolSurface {
         surface.instance.entity?.displayName ?? surface.instance.entity?.id;
       definitions.push({
         name,
-        description: `${action.name} — ${action.description} (surface "${surface.instance.face.name}"${entityLabel !== undefined ? `, ${entityLabel}` : ""}). ${
+        description: `${action.name} — ${action.description} (surface "${surface.instance.face.name ?? surface.instance.face.id}"${entityLabel !== undefined ? `, ${entityLabel}` : ""}). ${
           action.confirmationPolicy === "never"
             ? ""
             : "May require the user's explicit confirmation before executing."

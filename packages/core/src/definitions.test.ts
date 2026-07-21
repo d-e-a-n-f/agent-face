@@ -55,6 +55,15 @@ describe("defineAgentFace", () => {
     expect(Object.isFrozen(face)).toBe(true);
   });
 
+  it("defaults name and version when omitted", () => {
+    const face = defineAgentFace({
+      id: "billing.invoice",
+      description: "An invoice",
+    });
+    expect(face.name).toBe("Invoice");
+    expect(face.version).toBe("0.0.0");
+  });
+
   it("accepts relationships with valid target ids", () => {
     const face = defineAgentFace({
       ...validFace,
@@ -145,13 +154,25 @@ describe("defineAgentAction", () => {
     >();
   });
 
-  it("rejects a missing input schema", () => {
-    expectInvalidInput(() =>
-      defineAgentAction({
-        ...validAction,
-        input: undefined as unknown as AgentInputSchema<SendInput>,
-      }),
-    );
+  it("defaults omitted metadata: name from id, empty input schema", () => {
+    const action = defineAgentAction({
+      id: "save-draft",
+      description: "Save the current draft",
+      execute: () => ({ saved: true }),
+    });
+    expect(action.name).toBe("Save draft");
+    // No input declared: only the empty object parses.
+    expect(action.input).toBeUndefined();
+  });
+
+  it("humanizeId derives names from ids", async () => {
+    const { humanizeId, emptyInputSchema } = await import("./index.js");
+    expect(humanizeId("save-draft")).toBe("Save draft");
+    expect(humanizeId("billing.invoice")).toBe("Invoice");
+    expect(humanizeId("create-share-class")).toBe("Create share class");
+    expect(emptyInputSchema.parse({})).toEqual({});
+    expect(emptyInputSchema.parse(undefined)).toEqual({});
+    expectInvalidInput(() => emptyInputSchema.parse({ nope: 1 }));
   });
 
   it("rejects a missing execute function", () => {

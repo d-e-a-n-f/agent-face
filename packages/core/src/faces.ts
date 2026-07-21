@@ -29,10 +29,11 @@ export interface AgentFaceRelationship {
  */
 export interface AgentFaceDefinition {
   readonly id: AgentFaceId;
-  readonly name: string;
+  /** Defaults to a humanised form of the id's last segment. */
+  readonly name?: string;
   readonly description: string;
-  /** Semver-style version of this contract. */
-  readonly version: string;
+  /** Semver-style version of this contract. Defaults to "0.0.0". */
+  readonly version?: string;
   readonly tags?: readonly string[];
   readonly relationships?: readonly AgentFaceRelationship[];
 }

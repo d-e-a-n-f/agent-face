@@ -15,6 +15,7 @@ export {
   defineAgentEvent,
   defineAgentFace,
   defineAgentResource,
+  humanizeId,
 } from "./definitions.js";
 export type { AgentEventDefinition } from "./definitions.js";
 
@@ -71,6 +72,7 @@ export type {
 
 export type { AgentResourceDefinition } from "./resources.js";
 
+export { emptyInputSchema } from "./schema.js";
 export type { AgentInputSchema, InferAgentInput } from "./schema.js";
 
 export { AGENT_SENSITIVITY_LEVELS, compareSensitivity } from "./sensitivity.js";

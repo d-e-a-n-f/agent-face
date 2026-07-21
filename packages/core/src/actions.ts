@@ -108,14 +108,16 @@ export type AgentActionResult<TResult = JsonValue> =
  * ```
  */
 export interface AgentActionDefinition<
-  TInput,
-  TResult,
+  TInput = Record<string, never>,
+  TResult = unknown,
   TPreview extends AgentActionPreview = AgentActionPreview,
 > {
   readonly id: AgentActionId;
-  readonly name: string;
+  /** Defaults to a humanised form of the id, e.g. "save-draft" → "Save draft". */
+  readonly name?: string;
   readonly description: string;
-  readonly input: AgentInputSchema<TInput>;
+  /** Omit for zero-input actions — an empty-object schema is used. */
+  readonly input?: AgentInputSchema<TInput>;
   readonly sensitivity?: AgentSensitivity;
   readonly confirmation?: AgentConfirmationRule<TInput>;
   readonly preconditions?: readonly AgentPrecondition[];

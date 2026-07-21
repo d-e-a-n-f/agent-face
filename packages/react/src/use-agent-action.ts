@@ -16,14 +16,16 @@ import { useAgentSurface } from "./surface.js";
 
 /** Options for {@link useAgentAction}. */
 export interface UseAgentActionOptions<
-  TInput,
-  TResult,
+  TInput = Record<string, never>,
+  TResult = unknown,
   TPreview extends AgentActionPreview = AgentActionPreview,
 > {
   readonly id: string;
-  readonly name: string;
+  /** Defaults to a humanised form of the id, e.g. "save-draft" → "Save draft". */
+  readonly name?: string;
   readonly description: string;
-  readonly input: AgentInputSchema<TInput>;
+  /** Omit for zero-input actions — an empty-object schema is used. */
+  readonly input?: AgentInputSchema<TInput>;
   readonly sensitivity?: AgentSensitivity;
   readonly tags?: readonly string[];
   readonly confirmation?: AgentConfirmationRule<TInput>;
@@ -67,8 +69,8 @@ export interface UseAgentActionOptions<
  * @throws when used outside `<AgentFaceProvider>` or `<AgentSurface>`.
  */
 export function useAgentAction<
-  TInput,
-  TResult,
+  TInput = Record<string, never>,
+  TResult = unknown,
   TPreview extends AgentActionPreview = AgentActionPreview,
 >(options: UseAgentActionOptions<TInput, TResult, TPreview>): void {
   const runtime = useAgentRuntime();
@@ -134,7 +136,9 @@ export function useAgentAction<
               const current = latest.current.recommend;
               return typeof current?.instruction === "function"
                 ? current.instruction()
-                : (current?.instruction ?? latest.current.name);
+                : (current?.instruction ??
+                  latest.current.name ??
+                  latest.current.id);
             },
             ...(initial.recommend.priority !== undefined
               ? { priority: initial.recommend.priority }
@@ -147,14 +151,22 @@ export function useAgentAction<
       registration = runtime.registerAction(instanceId, {
       definition: defineAgentAction<TInput, TResult, AgentActionPreview>({
         id: initial.id,
-        name: initial.name,
+        ...(initial.name !== undefined ? { name: initial.name } : {}),
         description: initial.description,
-        input: {
-          parse: (raw) => latest.current.input.parse(raw),
-          ...(initial.input.toJSONSchema !== undefined
-            ? { toJSONSchema: () => latest.current.input.toJSONSchema?.() ?? {} }
-            : {}),
-        },
+        ...(initial.input !== undefined
+          ? {
+              input: {
+                parse: (raw) =>
+                  (latest.current.input ?? initial.input!).parse(raw),
+                ...(initial.input.toJSONSchema !== undefined
+                  ? {
+                      toJSONSchema: () =>
+                        latest.current.input?.toJSONSchema?.() ?? {},
+                    }
+                  : {}),
+              },
+            }
+          : {}),
         ...(sensitivity !== undefined ? { sensitivity } : {}),
         ...(initial.tags !== undefined ? { tags: initial.tags } : {}),
         ...(confirmation !== undefined ? { confirmation } : {}),

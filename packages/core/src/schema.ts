@@ -1,3 +1,4 @@
+import { AgentFaceError } from "./errors.js";
 import type { JsonObject } from "./json.js";
 
 /**
@@ -36,3 +37,30 @@ export interface AgentInputSchema<TInput> {
  */
 export type InferAgentInput<TSchema> =
   TSchema extends AgentInputSchema<infer TInput> ? TInput : never;
+
+/**
+ * The schema used when an action declares no `input`: accepts only an empty
+ * object (or nothing) and produces `{}`.
+ */
+export const emptyInputSchema: AgentInputSchema<Record<string, never>> = {
+  parse(input: unknown): Record<string, never> {
+    if (
+      input === undefined ||
+      input === null ||
+      (typeof input === "object" &&
+        !Array.isArray(input) &&
+        Object.keys(input as object).length === 0)
+    ) {
+      return {};
+    }
+    throw new AgentFaceError({
+      code: "INVALID_INPUT",
+      message: "This action takes no input",
+    });
+  },
+  toJSONSchema: () => ({
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  }),
+};

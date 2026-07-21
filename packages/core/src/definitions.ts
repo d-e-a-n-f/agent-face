@@ -17,6 +17,19 @@ export interface AgentEventDefinition<TPayload = JsonValue> {
   readonly payload?: AgentInputSchema<TPayload>;
 }
 
+/**
+ * Derives a human-readable name from an identifier: the last dot segment,
+ * dashes/underscores as spaces, first letter capitalised.
+ * `"save-draft"` → `"Save draft"`, `"billing.invoice"` → `"Invoice"`.
+ */
+export function humanizeId(id: string): string {
+  const segment = id.split(".").at(-1) ?? id;
+  const words = segment.replace(/[-_]+/g, " ").trim();
+  return words.length === 0
+    ? id
+    : words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /** `billing.invoice`, `counter.current-value`, `send` — dot/dash-separated segments. */
 const ID_PATTERN = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/i;
 /** Semver-style: `0.1.0`, `1.2.3-beta.1`. */
@@ -60,9 +73,11 @@ export function defineAgentFace(
   definition: AgentFaceDefinition,
 ): AgentFaceDefinition {
   assertId(definition.id, "Face");
-  assertText(definition.name, "Face", "name");
+  if (definition.name !== undefined) {
+    assertText(definition.name, "Face", "name");
+  }
   assertText(definition.description, "Face", "description");
-  if (!VERSION_PATTERN.test(definition.version)) {
+  if (definition.version !== undefined && !VERSION_PATTERN.test(definition.version)) {
     invalid(
       `Face version ${JSON.stringify(definition.version)} is invalid: expected a semver string like "0.1.0"`,
     );
@@ -70,7 +85,11 @@ export function defineAgentFace(
   for (const relationship of definition.relationships ?? []) {
     assertId(relationship.targetFaceId, "Face relationship target");
   }
-  return Object.freeze({ ...definition });
+  return Object.freeze({
+    ...definition,
+    name: definition.name ?? humanizeId(definition.id),
+    version: definition.version ?? "0.0.0",
+  });
 }
 
 /**
@@ -92,9 +111,14 @@ export function defineAgentResource<TValue = JsonValue>(
   definition: AgentResourceDefinition<TValue>,
 ): AgentResourceDefinition<TValue> {
   assertId(definition.id, "Resource");
-  assertText(definition.name, "Resource", "name");
+  if (definition.name !== undefined) {
+    assertText(definition.name, "Resource", "name");
+  }
   assertText(definition.description, "Resource", "description");
-  return Object.freeze({ ...definition });
+  return Object.freeze({
+    ...definition,
+    name: definition.name ?? humanizeId(definition.id),
+  });
 }
 
 /**
@@ -124,9 +148,11 @@ export function defineAgentAction<
   definition: AgentActionDefinition<TInput, TResult, TPreview>,
 ): AgentActionDefinition<TInput, TResult, TPreview> {
   assertId(definition.id, "Action");
-  assertText(definition.name, "Action", "name");
+  if (definition.name !== undefined) {
+    assertText(definition.name, "Action", "name");
+  }
   assertText(definition.description, "Action", "description");
-  if (typeof definition.input?.parse !== "function") {
+  if (definition.input !== undefined && typeof definition.input.parse !== "function") {
     invalid(`Action "${definition.id}" requires an input schema with parse()`);
   }
   if (typeof definition.execute !== "function") {
@@ -141,7 +167,10 @@ export function defineAgentAction<
       );
     }
   }
-  return Object.freeze({ ...definition });
+  return Object.freeze({
+    ...definition,
+    name: definition.name ?? humanizeId(definition.id),
+  });
 }
 
 /**

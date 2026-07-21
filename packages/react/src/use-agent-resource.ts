@@ -14,7 +14,8 @@ import { useAgentSurface } from "./surface.js";
 /** Metadata shared by both forms of {@link useAgentResource}. */
 interface UseAgentResourceBase<TValue> {
   readonly id: string;
-  readonly name: string;
+  /** Defaults to a humanised form of the id. */
+  readonly name?: string;
   readonly description: string;
   readonly sensitivity?: AgentSensitivity;
   readonly tags?: readonly string[];
@@ -106,7 +107,7 @@ export function useAgentResource<TValue>(
       registration = runtime.registerResource<TValue>(instanceId, {
       definition: defineAgentResource<TValue>({
         id: initial.id,
-        name: initial.name,
+        ...(initial.name !== undefined ? { name: initial.name } : {}),
         description: initial.description,
         ...(sensitivity !== undefined ? { sensitivity } : {}),
         ...(initial.tags !== undefined ? { tags: initial.tags } : {}),

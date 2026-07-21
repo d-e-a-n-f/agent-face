@@ -1,6 +1,7 @@
 "use client";
 
 import type { AgentEntityReference, AgentFaceDefinition } from "@agentface/core";
+import { defineAgentFace } from "@agentface/core";
 import type { AgentSurfaceRegistration } from "@agentface/runtime";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
@@ -22,13 +23,35 @@ const SurfaceContext = createContext<AgentSurfaceHandle | null | undefined>(
   undefined,
 );
 
-/** Props for {@link AgentSurface}. */
-export interface AgentSurfaceProps {
-  readonly face: AgentFaceDefinition;
+interface AgentSurfaceSharedProps {
   /** The business entity this surface presents. Updates apply without remounting. */
   readonly entity?: AgentEntityReference;
   readonly children: ReactNode;
 }
+
+/** The explicit form: a face built with `defineAgentFace`. */
+export interface AgentSurfaceFaceProps extends AgentSurfaceSharedProps {
+  readonly face: AgentFaceDefinition;
+  readonly id?: never;
+  readonly description?: never;
+}
+
+/**
+ * The inline form: declare the face right on the component. Name defaults to
+ * a humanised form of the id; version defaults to "0.0.0". Identity and
+ * metadata are fixed at mount.
+ */
+export interface AgentSurfaceInlineProps extends AgentSurfaceSharedProps {
+  readonly id: string;
+  readonly description: string;
+  readonly name?: string;
+  readonly version?: string;
+  readonly tags?: readonly string[];
+  readonly face?: never;
+}
+
+/** Props for {@link AgentSurface}. */
+export type AgentSurfaceProps = AgentSurfaceFaceProps | AgentSurfaceInlineProps;
 
 /**
  * Registers a mounted surface instance for its children. Nested surfaces
@@ -47,11 +70,28 @@ export interface AgentSurfaceProps {
  * ```
  */
 export function AgentSurface(props: AgentSurfaceProps): ReactNode {
-  const { face, entity, children } = props;
+  const { entity, children } = props;
   const runtime = useAgentRuntime();
   const parent = useContext(SurfaceContext);
   const [registration, setRegistration] =
     useState<AgentSurfaceRegistration | null>(null);
+
+  // Inline form: the face is derived once per id (metadata fixed at mount).
+  const inlineId = props.face === undefined ? props.id : undefined;
+  const face = useMemo<AgentFaceDefinition>(() => {
+    if (props.face !== undefined) {
+      return props.face;
+    }
+    return defineAgentFace({
+      id: props.id,
+      description: props.description,
+      ...(props.name !== undefined ? { name: props.name } : {}),
+      ...(props.version !== undefined ? { version: props.version } : {}),
+      ...(props.tags !== undefined ? { tags: props.tags } : {}),
+    });
+    // Only the identity re-derives the face; other metadata is mount-fixed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.face, inlineId]);
 
   const parentInstanceId = parent?.instanceId;
 

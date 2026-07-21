@@ -11,7 +11,12 @@ import type {
   AgentTraceId,
   JsonValue,
 } from "@agentface/core";
-import { AgentFaceError, isAgentError } from "@agentface/core";
+import {
+  AgentFaceError,
+  emptyInputSchema,
+  humanizeId,
+  isAgentError,
+} from "@agentface/core";
 import type {
   AgentPolicyDecision,
   AgentPolicyEngine,
@@ -349,9 +354,15 @@ export function createAgentRuntime(
       mustGetSurface(input.parentInstanceId);
     }
     const instanceId = `${input.face.id}:${input.entity?.id ?? "-"}:${generateId("instance")}`;
+    // Normalise optional face metadata once at registration.
+    const face = {
+      ...input.face,
+      name: input.face.name ?? humanizeId(input.face.id),
+      version: input.face.version ?? "0.0.0",
+    };
     const surface: StoredSurface = {
       instanceId,
-      face: input.face,
+      face,
       entity: input.entity,
       parentInstanceId: input.parentInstanceId,
       childInstanceIds: new Set(),
@@ -431,7 +442,7 @@ export function createAgentRuntime(
     const stored: StoredResource = {
       descriptor: {
         id: definition.id,
-        name: definition.name,
+        name: definition.name ?? humanizeId(definition.id),
         description: definition.description,
         ...(definition.sensitivity !== undefined
           ? { sensitivity: definition.sensitivity }
@@ -481,6 +492,12 @@ export function createAgentRuntime(
       descriptor: AgentActionDescriptor;
     } => {
       const definition = registration.definition;
+      // Zero-input actions accept only {}; TInput defaults to
+      // Record<string, never> at definition sites, so this cast is the
+      // omitted-input contract, not an escape hatch.
+      const inputSchema =
+        definition.input ??
+        (emptyInputSchema as unknown as NonNullable<typeof definition.input>);
       const preview = definition.preview;
       const confirmationPolicy =
         definition.confirmation === undefined || definition.confirmation === "never"
@@ -488,11 +505,11 @@ export function createAgentRuntime(
           : definition.confirmation === "always"
             ? "always"
             : "conditional";
-      const inputSchema = definition.input.toJSONSchema?.();
+      const inputJsonSchema = inputSchema.toJSONSchema?.();
       return {
         descriptor: {
           id: definition.id,
-          name: definition.name,
+          name: definition.name ?? humanizeId(definition.id),
           description: definition.description,
           ...(definition.sensitivity !== undefined
             ? { sensitivity: definition.sensitivity }
@@ -505,12 +522,12 @@ export function createAgentRuntime(
               description: precondition.description,
             }),
           ),
-          ...(inputSchema !== undefined ? { inputSchema } : {}),
+          ...(inputJsonSchema !== undefined ? { inputSchema: inputJsonSchema } : {}),
         },
         sensitivity: definition.sensitivity,
         preconditions: definition.preconditions ?? [],
         prepare(raw: unknown): PreparedInvocation {
-          const validated = definition.input.parse(raw);
+          const validated = inputSchema.parse(raw);
           return {
             validatedInput: validated,
             runPreview:
@@ -535,7 +552,9 @@ export function createAgentRuntime(
                 const instruction =
                   typeof recommend.instruction === "function"
                     ? recommend.instruction()
-                    : (recommend.instruction ?? definition.name);
+                    : (recommend.instruction ??
+                      definition.name ??
+                      humanizeId(definition.id));
                 return {
                   ...(recommend.reason !== undefined
                     ? { reason: recommend.reason }

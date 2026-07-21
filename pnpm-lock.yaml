@@ -284,9 +284,15 @@ importers:
       '@agentface/core':
         specifier: workspace:*
         version: link:../core
+      '@agentface/devtools':
+        specifier: workspace:*
+        version: link:../devtools
       '@agentface/react':
         specifier: workspace:*
         version: link:../react
+      '@agentface/runtime':
+        specifier: workspace:*
+        version: link:../runtime
     devDependencies:
       '@agentface/eslint-config':
         specifier: workspace:*

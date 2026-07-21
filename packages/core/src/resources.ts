@@ -21,7 +21,8 @@ import type { AgentSensitivity } from "./sensitivity.js";
  */
 export interface AgentResourceDefinition<TValue = JsonValue> {
   readonly id: AgentResourceId;
-  readonly name: string;
+  /** Defaults to a humanised form of the id. */
+  readonly name?: string;
   readonly description: string;
   readonly sensitivity?: AgentSensitivity;
   readonly tags?: readonly string[];
