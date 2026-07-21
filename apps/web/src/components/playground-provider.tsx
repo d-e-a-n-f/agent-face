@@ -6,6 +6,7 @@ import { AgentFaceProvider } from "@agentface/react";
 import { createAgentRuntime } from "@agentface/runtime";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { AssistantPanel } from "./assistant-panel";
 
 /**
  * Hosts one browser-local AgentFace runtime for the playground, with the
@@ -31,6 +32,7 @@ export function PlaygroundProvider({
       user={{ type: "user", id: "user_dean", displayName: "Dean" }}
     >
       <div className="flex-1">{children}</div>
+      <AssistantPanel />
       <AgentFaceDevTools />
     </AgentFaceProvider>
   );

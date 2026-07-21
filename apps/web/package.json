@@ -11,6 +11,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@agentface/assistant": "workspace:^",
     "@agentface/core": "workspace:^",
     "@agentface/devtools": "workspace:^",
     "@agentface/policy": "workspace:^",

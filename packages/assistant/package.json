@@ -1,0 +1,51 @@
+{
+  "name": "@agentface/assistant",
+  "version": "0.1.0",
+  "description": "Model adapters and the assistant loop for operating AgentFace runtimes",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bedrock": {
+      "types": "./dist/bedrock.d.ts",
+      "default": "./dist/bedrock.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agentface/core": "workspace:*",
+    "@agentface/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@agentface/eslint-config": "workspace:*",
+    "@agentface/policy": "workspace:^",
+    "@agentface/typescript-config": "workspace:*",
+    "@anthropic-ai/bedrock-sdk": "^0.32.0",
+    "eslint": "^9.31.0",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/bedrock-sdk": ">=0.20.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/bedrock-sdk": {
+      "optional": true
+    }
+  }
+}
