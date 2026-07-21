@@ -42,20 +42,25 @@ export function PlaygroundProvider({
     >
       <AgentFaceNavigation
         routes={[
-          { path: "/", description: "Examples index" },
-          { path: "/examples/counter", description: "Counter example" },
+          { path: "/", description: "Playground home" },
+          { path: "/examples/counter", description: "Counter learning example" },
+          { path: "/portal", description: "Portal home" },
+          { path: "/portal/clients", description: "Client list" },
           {
-            path: "/examples/customer-table",
-            description: "Customer table with filters and selection",
-          },
-          { path: "/examples/invoice", description: "Invoice editor" },
-          {
-            path: "/examples/onboarding",
-            description: "Client onboarding form (agent fills, human owns)",
+            path: "/portal/clients/:clientId",
+            description: "One client: profile, onboarding status, invoices",
           },
           {
-            path: "/examples/product-publication",
-            description: "Share class creation, approval, and publication",
+            path: "/portal/clients/:clientId/onboarding",
+            description: "The client's onboarding form",
+          },
+          {
+            path: "/portal/invoices/:invoiceId",
+            description: "One invoice: add line items, discount, send",
+          },
+          {
+            path: "/portal/products",
+            description: "Share classes: create, validate, approve, publish",
           },
         ]}
       />

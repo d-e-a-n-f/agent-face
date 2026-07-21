@@ -53,17 +53,37 @@ interface NavigateInput {
   readonly path: string;
 }
 
-function pathSchema(paths: readonly string[]): AgentInputSchema<NavigateInput> {
+/**
+ * Route templates may contain `:param` segments (e.g.
+ * `/portal/clients/:clientId`); a concrete path matches when every static
+ * segment is equal and every param segment is non-empty.
+ */
+function matchesTemplate(template: string, path: string): boolean {
+  const templateSegments = template.split("/");
+  const pathSegments = path.split("/");
+  if (templateSegments.length !== pathSegments.length) {
+    return false;
+  }
+  return templateSegments.every((segment, index) => {
+    const candidate = pathSegments[index] ?? "";
+    return segment.startsWith(":") ? candidate.length > 0 : segment === candidate;
+  });
+}
+
+function pathSchema(templates: readonly string[]): AgentInputSchema<NavigateInput> {
   return {
     parse(input: unknown): NavigateInput {
       const path =
         typeof input === "object" && input !== null
           ? (input as { path?: unknown }).path
           : undefined;
-      if (typeof path !== "string" || !paths.includes(path)) {
+      if (
+        typeof path !== "string" ||
+        !templates.some((template) => matchesTemplate(template, path))
+      ) {
         throw new AgentFaceError({
           code: "INVALID_INPUT",
-          message: `path must be one of: ${paths.join(", ")}`,
+          message: `path must match one of: ${templates.join(", ")} (replace :params with real values)`,
         });
       }
       return { path };
@@ -73,8 +93,7 @@ function pathSchema(paths: readonly string[]): AgentInputSchema<NavigateInput> {
       properties: {
         path: {
           type: "string",
-          enum: [...paths],
-          description: "The screen to open",
+          description: `A concrete path matching one of these templates (replace :params with real ids): ${templates.join(", ")}`,
         },
       },
       required: ["path"],

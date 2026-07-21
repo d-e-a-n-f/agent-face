@@ -55,6 +55,7 @@ Rules:
 - Read resources before acting when the current state matters.
 - Some actions require the user's explicit confirmation; the application will ask them directly. If a result says the user declined, respect that — do not retry.
 - If a tool returns an error, explain it to the user plainly and adjust; do not retry the identical call.
+- If the app exposes help/knowledge capabilities, search them FIRST when the user asks how something works, what a rule is, or why something happened — and ground your answer in what you find. When the user asks how to do something you can do for them, explain briefly and offer to do it (or do it, if they asked for the outcome).
 - Keep final answers short and concrete: what you did, what changed, and anything that needs the user's attention.`;
 
 const EMPTY_OBJECT_SCHEMA: JsonObject = {

@@ -24,6 +24,9 @@ export type {
 export { AgentSurface, useAgentSurface } from "./surface.js";
 export type { AgentSurfaceHandle, AgentSurfaceProps } from "./surface.js";
 
+export { AgentFaceKnowledge } from "./knowledge.js";
+export type { AgentFaceKnowledgeProps, AgentHelpArticle } from "./knowledge.js";
+
 export { AgentBoundary, useAgentBoundary } from "./boundary.js";
 export type { AgentBoundaryPolicy, AgentBoundaryProps } from "./boundary.js";
 

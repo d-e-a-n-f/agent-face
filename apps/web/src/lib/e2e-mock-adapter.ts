@@ -15,12 +15,15 @@ import type {
  * Stateless: every step is derived by pattern-matching the conversation
  * (which tools exist, which tool results have already come back), so it
  * survives multiple sends, either confirmation outcome, and page changes.
- * Three scripted scenarios, selected by the user's instruction text:
+ * Portal scenarios, selected by the user's instruction text:
  *
- * 1. Invoice: "add a consulting line item … prepare for sending"
- * 2. Product publication (incl. navigation): the Sterling share-class chain
- * 3. Cross-page fill: read the top customer on one screen, navigate, and
- *    use it on the invoice screen
+ * 1. "onboard northshore" — navigate to the client's onboarding form, fill
+ *    it through the real form state, save a draft, do NOT submit.
+ * 2. "invoice for wilshire" — navigate to the client, create an invoice,
+ *    open it, add the line item, send (confirmation-gated).
+ * 3. "share class" — the publication chain on /portal/products.
+ * 4. "discount" question — search the app's help, read the article, answer
+ *    grounded in it.
  */
 
 type ToolResult = Extract<AssistantContentPart, { type: "tool-result" }>;
@@ -85,67 +88,136 @@ function wasDeclined(result: ToolResult | undefined): boolean {
   );
 }
 
-/** Scenario 1: the invoice flow (Phase-6 acceptance). */
+/** Unwraps the action-tool result envelope: { outcome: { result: … } }. */
+function outcomeOf<T>(result: ToolResult | undefined): T | undefined {
+  if (typeof result?.result !== "object" || result.result === null) {
+    return undefined;
+  }
+  return (result.result as { outcome?: { result?: T } }).outcome?.result;
+}
+
+function navigateOr(
+  request: AgentModelRequest,
+  path: string,
+  narration: string,
+  otherwise: string,
+): AgentModelResponse {
+  const navigate = findTool(request, "__navigate");
+  if (navigate !== undefined) {
+    return call(navigate, { path }, narration);
+  }
+  return finish(otherwise);
+}
+
+/** Scenario 1: onboard Northshore — navigate, fill the real form, save. */
+function onboardingStep(request: AgentModelRequest): AgentModelResponse {
+  if (findResult(request, "__save-draft") !== undefined) {
+    return finish(
+      "Draft saved. I filled in the company, address, and contact sections — review and edit anything, then submit when you're ready. I did NOT submit it, as requested.",
+    );
+  }
+  if (findResult(request, "__fill-form") !== undefined) {
+    const saveDraft = findTool(request, "__save-draft");
+    if (saveDraft !== undefined) {
+      return call(saveDraft, {}, "Saving the draft — not submitting.");
+    }
+  }
+  const fillForm = findTool(request, "__fill-form");
+  if (fillForm === undefined) {
+    return navigateOr(
+      request,
+      "/portal/clients/northshore/onboarding",
+      "Opening Northshore Limited's onboarding form.",
+      "Open the client's onboarding screen and try again.",
+    );
+  }
+  return call(
+    fillForm,
+    {
+      company: {
+        name: "Northshore Limited",
+        registrationNumber: "09876543",
+        country: "United Kingdom",
+      },
+      address: {
+        street: "1 Harbour Street",
+        city: "London",
+        postcode: "EC2A 4BX",
+      },
+      contact: { name: "Maya Chen", email: "maya@northshore.example" },
+    },
+    "Filling in the onboarding form.",
+  );
+}
+
+/** Scenario 2: invoice Wilshire — client page → create → open → add → send. */
 function invoiceStep(request: AgentModelRequest): AgentModelResponse {
   const sendResult = findResult(request, "__send");
   if (sendResult !== undefined) {
     return finish(
       wasDeclined(sendResult)
-        ? "Understood — the invoice was not sent."
-        : "All done — the invoice was sent after your confirmation.",
+        ? "Understood — the invoice was not sent. It remains a draft."
+        : "Done — the invoice for Wilshire Group was created, the consulting day added, and it was sent after your confirmation.",
     );
   }
+
   if (findResult(request, "__add-line-item") !== undefined) {
     const send = findTool(request, "__send");
     if (send !== undefined) {
       return call(
         send,
         {},
-        "Line item added. Preparing the invoice for sending — please confirm.",
+        "Line item added. Sending the invoice — please confirm.",
       );
     }
   }
-  const addLineItem = findTool(request, "__add-line-item");
-  if (addLineItem !== undefined) {
+
+  const createResult = findResult(request, "__create-invoice");
+  if (createResult !== undefined) {
+    const invoiceId = outcomeOf<{ invoiceId?: string }>(createResult)?.invoiceId;
+    const addLineItem = findTool(request, "__add-line-item");
+    if (addLineItem === undefined) {
+      return navigateOr(
+        request,
+        `/portal/invoices/${invoiceId ?? ""}`,
+        "Invoice created. Opening it.",
+        "Open the new invoice to continue.",
+      );
+    }
     return call(
       addLineItem,
-      { description: "Consulting", quantity: 1, unitPrice: 100 },
-      "Adding the consulting line item.",
+      { description: "Consulting (day)", quantity: 1, unitPrice: 1200 },
+      "Adding the consulting day.",
     );
   }
-  return finish(
-    "The demo adapter drives the invoice example — open /examples/invoice.",
-  );
+
+  const createInvoice = findTool(request, "__create-invoice");
+  if (createInvoice === undefined) {
+    return navigateOr(
+      request,
+      "/portal/clients/wilshire",
+      "Opening Wilshire Group.",
+      "Open the client's page to continue.",
+    );
+  }
+  return call(createInvoice, {}, "Creating a new draft invoice.");
 }
 
-/** Scenario 2: the Sterling share-class chain, navigating there if needed. */
+/** Scenario 3: the Sterling share-class chain on /portal/products. */
 function publicationStep(request: AgentModelRequest): AgentModelResponse {
   const createResult = findResult(request, "__create-share-class");
-  // Action tool results wrap the execution outcome:
-  // { outcome: { status, result: <the action's return value> } }.
   const shareClassId =
-    typeof createResult?.result === "object" && createResult.result !== null
-      ? String(
-          (
-            createResult.result as {
-              outcome?: { result?: { shareClassId?: string } };
-            }
-          ).outcome?.result?.shareClassId ?? "",
-        )
-      : "";
+    outcomeOf<{ shareClassId?: string }>(createResult)?.shareClassId ?? "";
 
   if (createResult === undefined) {
     const create = findTool(request, "__create-share-class");
     if (create === undefined) {
-      const navigate = findTool(request, "__navigate");
-      if (navigate !== undefined) {
-        return call(
-          navigate,
-          { path: "/examples/product-publication" },
-          "Opening the product publication screen.",
-        );
-      }
-      return finish("Open /examples/product-publication and try again.");
+      return navigateOr(
+        request,
+        "/portal/products",
+        "Opening the products screen.",
+        "Open /portal/products and try again.",
+      );
     }
     return call(
       create,
@@ -217,22 +289,14 @@ function publicationStep(request: AgentModelRequest): AgentModelResponse {
     }
   }
 
-  const publishResult = findResult(request, "__publish-share-class");
-  const payload =
-    typeof publishResult?.result === "object" && publishResult.result !== null
-      ? (publishResult.result as {
-          outcome?: {
-            result?: {
-              results?: readonly {
-                workspaceId: string;
-                status: string;
-                error?: string;
-              }[];
-            };
-          };
-        })
-      : undefined;
-  const perWorkspace = payload?.outcome?.result?.results ?? [];
+  const publishOutcome = outcomeOf<{
+    results?: readonly {
+      workspaceId: string;
+      status: string;
+      error?: string;
+    }[];
+  }>(findResult(request, "__publish-share-class"));
+  const perWorkspace = publishOutcome?.results ?? [];
   const published = perWorkspace.filter(
     (result) => result.status === "published",
   );
@@ -252,143 +316,62 @@ function publicationStep(request: AgentModelRequest): AgentModelResponse {
   );
 }
 
-/** Scenario 3: cross-page fill — read the top customer, navigate, use it. */
-function crossPageStep(request: AgentModelRequest): AgentModelResponse {
-  if (findResult(request, "__add-line-item") !== undefined) {
-    return finish(
-      "Done — I added the consulting line item for Wilshire Group, our highest-value active customer, using what I read on the customers screen.",
-    );
-  }
-
-  const readResult = findResult(request, "read_resource");
+/** Scenario 4: a "how does X work" question — help-grounded answer. */
+function helpStep(request: AgentModelRequest): AgentModelResponse {
+  const readResult = findResult(request, "__read-help-article");
   if (readResult !== undefined) {
-    const addLineItem = findTool(request, "__add-line-item");
-    if (addLineItem === undefined) {
-      const navigate = findTool(request, "__navigate");
-      if (navigate !== undefined) {
-        return call(
-          navigate,
-          { path: "/examples/invoice" },
-          "Found the top customer. Opening the invoice screen.",
-        );
-      }
-      return finish("I need the invoice screen to continue.");
-    }
-    // Back on the invoice screen with the customer data still in context.
-    const value =
-      typeof readResult.result === "object" && readResult.result !== null
-        ? (
-            readResult.result as {
-              value?: readonly { name?: string; annualValue?: number }[];
-            }
-          ).value
-        : undefined;
-    const top = [...(value ?? [])].sort(
-      (a, b) => (b.annualValue ?? 0) - (a.annualValue ?? 0),
-    )[0];
-    return call(
-      addLineItem,
-      {
-        description: `Consulting for ${top?.name ?? "top customer"}`,
-        quantity: 1,
-        unitPrice: 1200,
-      },
-      `The highest-value active customer is ${top?.name ?? "unknown"}. Adding the line item on the invoice.`,
-    );
-  }
-
-  if (findResult(request, "__apply-filter") !== undefined) {
-    const match = /"instanceId": "(customers\.table[^"]*)"/.exec(
-      request.system,
-    );
-    return call(
-      "read_resource",
-      { instanceId: match?.[1] ?? "", resourceId: "results" },
-      "Reading the filtered customers.",
-    );
-  }
-
-  const applyFilter = findTool(request, "__apply-filter");
-  if (applyFilter !== undefined) {
-    return call(
-      applyFilter,
-      { status: "active", minimumValue: 50_000 },
-      "Filtering to active customers over £50,000.",
-    );
-  }
-  return finish("Start on /examples/customer-table for the cross-page demo.");
-}
-
-
-/** Scenario 4: fill the onboarding form section by section; save, don't submit. */
-function onboardingStep(request: AgentModelRequest): AgentModelResponse {
-  if (findResult(request, "__save-draft") !== undefined) {
+    const article = outcomeOf<{ title?: string; body?: string }>(readResult);
+    const body = article?.body ?? "";
+    const summary =
+      body.split(". ").slice(0, 3).join(". ") || "See the help article.";
     return finish(
-      "Draft saved. I have filled in the company, address, and contact sections — review and edit anything, then submit when you're ready. I did NOT submit it, as requested.",
+      `From the app's documentation ("${article?.title ?? "Help"}"): ${summary}${summary.endsWith(".") ? "" : "."} Want me to apply a discount for you?`,
     );
   }
-  const steps: readonly {
-    readonly suffix: string;
-    readonly input: unknown;
-    readonly narration: string;
-  }[] = [
-    {
-      suffix: "__fill-form",
-      input: {
-        company: {
-          name: "Northshore Limited",
-          registrationNumber: "09876543",
-          country: "United Kingdom",
-        },
-        address: {
-          street: "1 Harbour Street",
-          city: "London",
-          postcode: "EC2A 4BX",
-        },
-        contact: { name: "Maya Chen", email: "maya@northshore.example" },
-      },
-      narration: "Filling in the onboarding form.",
-    },
-    {
-      suffix: "__save-draft",
-      input: {},
-      narration: "Saving the draft — not submitting.",
-    },
-  ];
-  for (const step of steps) {
-    if (findResult(request, step.suffix) === undefined) {
-      const tool = findTool(request, step.suffix);
-      if (tool === undefined) {
-        const navigate = findTool(request, "__navigate");
-        if (navigate !== undefined) {
-          return call(
-            navigate,
-            { path: "/examples/onboarding" },
-            "Opening the onboarding screen.",
-          );
-        }
-        return finish("Open /examples/onboarding and try again.");
-      }
-      return call(tool, step.input, step.narration);
+  const searchResult = findResult(request, "__search-help");
+  if (searchResult !== undefined) {
+    const results = outcomeOf<{
+      results?: readonly { articleId: string }[];
+    }>(searchResult);
+    const articleId = results?.results?.[0]?.articleId;
+    const read = findTool(request, "__read-help-article");
+    if (articleId !== undefined && read !== undefined) {
+      return call(read, { articleId }, "Reading the relevant article.");
     }
+    return finish("I couldn't find anything relevant in the app's help.");
   }
-  return finish("Draft saved.");
+  const search = findTool(request, "__search-help");
+  if (search !== undefined) {
+    return call(
+      search,
+      { query: "invoice discounts approval" },
+      "Checking the app's documentation.",
+    );
+  }
+  return finish("This app doesn't expose help content here.");
 }
 
 export function createE2eMockAdapter(): AgentModelAdapter {
   return {
     complete(request: AgentModelRequest): Promise<AgentModelResponse> {
       const instruction = userInstruction(request);
-      if (instruction.includes("share class")) {
-        return Promise.resolve(publicationStep(request));
-      }
       if (instruction.includes("northshore")) {
         return Promise.resolve(onboardingStep(request));
       }
-      if (instruction.includes("highest-value")) {
-        return Promise.resolve(crossPageStep(request));
+      if (instruction.includes("share class")) {
+        return Promise.resolve(publicationStep(request));
       }
-      return Promise.resolve(invoiceStep(request));
+      if (instruction.includes("invoice for wilshire")) {
+        return Promise.resolve(invoiceStep(request));
+      }
+      if (instruction.includes("discount")) {
+        return Promise.resolve(helpStep(request));
+      }
+      return Promise.resolve(
+        finish(
+          "The demo adapter supports the Portal scenarios listed on /portal.",
+        ),
+      );
     },
   };
 }

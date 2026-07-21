@@ -2,14 +2,9 @@
 
 import { defineAgentFace } from "@agentface/core";
 import { fromZod } from "@agentface/core/zod";
-import {
-  AgentSurface,
-  useAgentAction,
-  useAgentSurface,
-} from "@agentface/react";
+import { AgentSurface, useAgentAction, useAgentSurface } from "@agentface/react";
 import { useAgentForm } from "@agentface/react/hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRef, useState } from "react";
 import type { FieldPathByValue } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -31,13 +26,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import type { OnboardingValues } from "@/portal/store";
+import {
+  saveOnboarding,
+  submitOnboarding,
+  usePortalStore,
+} from "@/portal/store";
 
 /**
- * The "agent as helper" pattern: the PRIMARY interface is a real form
- * (shadcn + react-hook-form). AgentFace wraps the same form instance —
- * agent actions write through `form.setValue` with validation, so the human
- * watches fields fill in, can edit anything by hand, and stays in charge of
- * submission.
+ * The agent-as-helper pattern in the Portal: a real form the human owns,
+ * agent-enabled with one useAgentForm call. Saving and submitting persist to
+ * the shared portal store; submitting activates the client.
  */
 
 const onboardingSchema = z.object({
@@ -59,77 +58,71 @@ const onboardingSchema = z.object({
   }),
 });
 
-type OnboardingValues = z.infer<typeof onboardingSchema>;
-
-const EMPTY_VALUES: OnboardingValues = {
-  company: { name: "", registrationNumber: "", country: "" },
-  address: { street: "", city: "", postcode: "" },
-  contact: { name: "", email: "" },
-};
-
 const onboardingFace = defineAgentFace({
-  id: "onboarding.application",
+  id: "portal.onboarding",
   name: "Client onboarding",
   description:
-    "A multi-section onboarding form the agent can fill section by section; the human reviews, edits, and stays in charge of submission",
+    "The onboarding form for one client; the human reviews, edits, and stays in charge of submission. Submitting activates the client.",
   version: "0.1.0",
-  tags: ["example", "onboarding"],
+  tags: ["portal", "onboarding"],
 });
 
 const emptyInput = fromZod(z.object({}));
 
-interface Meta {
-  readonly savedAt: string | null;
-  readonly submittedAt: string | null;
-}
+function OnboardingFormFeature({
+  clientId,
+}: {
+  readonly clientId: string;
+}): React.JSX.Element {
+  const { store, getStore, mutate } = usePortalStore();
+  const surface = useAgentSurface();
+  const client = store.clients.find((candidate) => candidate.id === clientId);
+  const record = store.onboarding[clientId];
 
-function OnboardingFeature(): React.JSX.Element {
   const form = useForm<OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
-    defaultValues: EMPTY_VALUES,
+    defaultValues: record?.values ?? {
+      company: { name: client?.name ?? "", registrationNumber: "", country: "" },
+      address: { street: "", city: "", postcode: "" },
+      contact: { name: "", email: client?.email ?? "" },
+    },
     mode: "onChange",
   });
-  const [meta, setMeta] = useState<Meta>({ savedAt: null, submittedAt: null });
-  // Agent closures read the ref so sequential actions in one run see
-  // current state; the state mirrors it for rendering.
-  const metaRef = useRef(meta);
-  const surface = useAgentSurface();
 
-  const updateMeta = (next: Partial<Meta>): void => {
-    metaRef.current = { ...metaRef.current, ...next };
-    setMeta(metaRef.current);
-    surface?.bumpRevision();
-  };
+  const notSubmitted = () =>
+    getStore().onboarding[clientId]?.submittedAt == null;
+  const touch = () => surface?.bumpRevision();
 
-  const notSubmitted = () => metaRef.current.submittedAt === null;
-
-  // One hook agent-enables the whole form: a form-state resource and a
-  // partial fill action derived from the form itself (the resolver stays
-  // the source of truth for validation).
   useAgentForm({
     form,
     name: "Onboarding form",
-    description:
-      "the client onboarding form: company (name, 8-digit registration number, country), registered address (street, city, postcode), and primary contact (name, email)",
+    description: `the onboarding form for ${client?.name ?? clientId}: company (name, 8-digit registration number, country), registered address (street, city, postcode), and primary contact (name, email)`,
     isEnabled: notSubmitted,
   });
 
   useAgentAction({
     id: "save-draft",
     name: "Save draft",
-    description: "Save the form as a draft without submitting it.",
+    description:
+      "Save the onboarding form as a draft without submitting. Does not change the client's status.",
     input: emptyInput,
     confirmation: "never",
     isAvailable: notSubmitted,
     recommend: {
-      when: () => form.formState.isDirty && metaRef.current.savedAt === null,
+      when: () =>
+        form.formState.isDirty &&
+        getStore().onboarding[clientId]?.savedAt == null &&
+        notSubmitted(),
       reason: "There are unsaved changes",
       instruction: "Save the onboarding draft",
       priority: 5,
     },
     execute: () => {
       const savedAt = new Date().toISOString();
-      updateMeta({ savedAt });
+      mutate((current) =>
+        saveOnboarding(current, clientId, form.getValues(), savedAt),
+      );
+      touch();
       return { savedAt };
     },
   });
@@ -138,12 +131,13 @@ function OnboardingFeature(): React.JSX.Element {
     id: "submit",
     name: "Submit onboarding",
     description:
-      "Submit the completed onboarding record. The whole form must be valid, and the user must confirm.",
+      "Submit the completed onboarding record and activate the client. The whole form must be valid, and the user must confirm.",
     input: emptyInput,
     sensitivity: "confidential",
     confirmation: "always",
+    isAvailable: notSubmitted,
     recommend: {
-      when: () => form.formState.isValid,
+      when: () => form.formState.isValid && notSubmitted(),
       reason: "Every section is complete and valid",
       instruction: "Submit the onboarding form",
       priority: 10,
@@ -156,17 +150,23 @@ function OnboardingFeature(): React.JSX.Element {
       },
     ],
     preview: () => ({
-      summary: `Submit onboarding for ${form.getValues("company.name") || "the company"}`,
-      changes: [{ path: "status", from: "draft", to: "submitted" }],
+      summary: `Submit onboarding for ${form.getValues("company.name") || "the company"} and activate the client`,
+      changes: [
+        { path: "status", from: "draft", to: "submitted" },
+        { path: "client.status", from: client?.status ?? "prospect", to: "active" },
+      ],
     }),
     execute: () => {
       const submittedAt = new Date().toISOString();
-      updateMeta({ submittedAt });
+      mutate((current) =>
+        submitOnboarding(current, clientId, form.getValues(), submittedAt),
+      );
+      touch();
       return { submittedAt };
     },
   });
 
-  const submitted = meta.submittedAt !== null;
+  const submitted = record?.submittedAt != null;
 
   const sectionField = (
     name: FieldPathByValue<OnboardingValues, string>,
@@ -188,6 +188,10 @@ function OnboardingFeature(): React.JSX.Element {
     />
   );
 
+  if (client === undefined) {
+    return <p className="text-sm text-neutral-500">Unknown client.</p>;
+  }
+
   return (
     <Form {...form}>
       <form
@@ -196,17 +200,22 @@ function OnboardingFeature(): React.JSX.Element {
           // The human path: a deliberate click on a valid form submits
           // directly — confirmation cards are for the agent path.
           void form.handleSubmit(() => {
-            updateMeta({ submittedAt: new Date().toISOString() });
+            mutate((current) =>
+              submitOnboarding(
+                current,
+                clientId,
+                form.getValues(),
+                new Date().toISOString(),
+              ),
+            );
+            touch();
           })(event);
         }}
       >
-        <div
-          className="flex items-center gap-2"
-          data-testid="onboarding-status"
-        >
+        <div className="flex items-center gap-2" data-testid="onboarding-status">
           {submitted ? (
             <Badge>Submitted</Badge>
-          ) : meta.savedAt !== null ? (
+          ) : record?.savedAt != null ? (
             <Badge variant="secondary">Draft saved</Badge>
           ) : (
             <Badge variant="outline">New</Badge>
@@ -259,7 +268,17 @@ function OnboardingFeature(): React.JSX.Element {
             type="button"
             variant="secondary"
             disabled={submitted}
-            onClick={() => updateMeta({ savedAt: new Date().toISOString() })}
+            onClick={() => {
+              mutate((current) =>
+                saveOnboarding(
+                  current,
+                  clientId,
+                  form.getValues(),
+                  new Date().toISOString(),
+                ),
+              );
+              touch();
+            }}
           >
             Save draft
           </Button>
@@ -272,11 +291,23 @@ function OnboardingFeature(): React.JSX.Element {
   );
 }
 
-/** Route 4 — a proper form as the primary interface, with the agent as helper. */
-export function OnboardingExample(): React.JSX.Element {
+export function OnboardingForm({
+  clientId,
+}: {
+  readonly clientId: string;
+}): React.JSX.Element {
+  const { store } = usePortalStore();
+  const client = store.clients.find((candidate) => candidate.id === clientId);
   return (
-    <AgentSurface face={onboardingFace}>
-      <OnboardingFeature />
+    <AgentSurface
+      face={onboardingFace}
+      entity={{
+        type: "client",
+        id: clientId,
+        ...(client !== undefined ? { displayName: client.name } : {}),
+      }}
+    >
+      <OnboardingFormFeature clientId={clientId} />
     </AgentSurface>
   );
 }
