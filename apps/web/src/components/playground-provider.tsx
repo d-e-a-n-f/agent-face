@@ -8,6 +8,7 @@ import { createAgentRuntime } from "@agentface/runtime";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { createE2eMockAdapter } from "@/lib/e2e-mock-adapter";
+import { AgentFaceNavigation } from "@agentface/next/navigation";
 
 // CI runs the deterministic e2e mock adapter; everywhere else the shipped
 // widget defaults to Claude via the /api/agentface route.
@@ -39,9 +40,25 @@ export function PlaygroundProvider({
       application={{ id: "agentface-playground", name: "AgentFace Playground" }}
       user={{ type: "user", id: "user_dean", displayName: "Dean" }}
     >
+      <AgentFaceNavigation
+        routes={[
+          { path: "/", description: "Examples index" },
+          { path: "/examples/counter", description: "Counter example" },
+          {
+            path: "/examples/customer-table",
+            description: "Customer table with filters and selection",
+          },
+          { path: "/examples/invoice", description: "Invoice editor" },
+          {
+            path: "/examples/product-publication",
+            description: "Share class creation, approval, and publication",
+          },
+        ]}
+      />
       <div className="flex-1">{children}</div>
       <AgentFaceAssistant
         title="Assistant"
+        maxIterations={16}
         {...(mockAdapter !== null ? { adapter: mockAdapter } : {})}
       />
       {/* Right clearance keeps the DevTools toggle out from under the

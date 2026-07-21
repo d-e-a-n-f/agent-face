@@ -1,7 +1,11 @@
 "use client";
 
 import type { AgentSensitivity, JsonValue } from "@agentface/core";
-import { compareSensitivity, defineAgentResource } from "@agentface/core";
+import {
+  compareSensitivity,
+  defineAgentResource,
+  isAgentFaceError,
+} from "@agentface/core";
 import { useEffect, useRef } from "react";
 import { useAgentBoundary } from "./boundary.js";
 import { useAgentRuntime } from "./context.js";
@@ -97,7 +101,9 @@ export function useAgentResource<TValue>(
     }
     const initial = latest.current;
     const sensitivity = initial.sensitivity ?? boundarySensitivity;
-    const registration = runtime.registerResource<TValue>(instanceId, {
+    let registration;
+    try {
+      registration = runtime.registerResource<TValue>(instanceId, {
       definition: defineAgentResource<TValue>({
         id: initial.id,
         name: initial.name,
@@ -127,7 +133,17 @@ export function useAgentResource<TValue>(
             },
           }
         : {}),
-    });
+      });
+    } catch (caught) {
+      // During Strict Mode's remount cycle (or a parent surface remount) this
+      // effect can fire while the context still carries the just-unregistered
+      // instance id. Skip — the effect re-runs with the new id once the
+      // surface's registration state commits.
+      if (isAgentFaceError(caught) && caught.code === "SURFACE_NOT_FOUND") {
+        return;
+      }
+      throw caught;
+    }
     return () => {
       registration.unregister();
     };

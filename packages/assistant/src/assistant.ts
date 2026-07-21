@@ -32,7 +32,7 @@ export interface CreateAssistantOptions {
   ) => Promise<ConfirmationDecision>;
   /** Prepended to the generated surface context. */
   readonly systemPrompt?: string;
-  /** Maximum model round-trips per `send`. Default 8. */
+  /** Maximum model round-trips per `send`. Default 12. */
   readonly maxIterations?: number;
   /** Principals the assistant's runtime operations run as. */
   readonly principals?: PrincipalContext;
@@ -204,7 +204,7 @@ export function createAssistant(
     runtime,
     adapter,
     systemPrompt = DEFAULT_SYSTEM_PROMPT,
-    maxIterations = 8,
+    maxIterations = 12,
     principals,
     onUpdate,
   } = options;

@@ -19,6 +19,12 @@ const examples = [
     description:
       "The full vertical slice: typed inputs, preconditions, previews, confirmation, and stale-state rejection.",
   },
+  {
+    href: "/examples/product-publication",
+    title: "Product publication",
+    description:
+      "The reference scenario: nested surfaces, inheritance, compliance, confirmation-gated approval and publication, and explicit partial failure.",
+  },
 ];
 
 export default function Home() {

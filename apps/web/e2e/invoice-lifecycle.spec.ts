@@ -15,6 +15,8 @@ test("full invoice lifecycle through DevTools", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /billing\.invoice/ }),
   ).toBeVisible();
+  // Select the invoice surface (app.navigation is discovered first).
+  await page.getByRole("button", { name: /billing\.invoice/ }).click();
 
   // Inspect the summary resource.
   await page.getByRole("button", { name: "Read Invoice summary" }).click();
@@ -63,6 +65,8 @@ test("a prepared send goes stale when the invoice changes first", async ({
   await expect(
     page.getByRole("button", { name: /billing\.invoice/ }),
   ).toBeVisible();
+  // Select the invoice surface (app.navigation is discovered first).
+  await page.getByRole("button", { name: /billing\.invoice/ }).click();
 
   // Prepare the send.
   await page.getByRole("combobox", { name: "Action" }).selectOption("send");
@@ -87,6 +91,7 @@ test("counter example responds to agent actions", async ({ page }) => {
   await expect(page.getByTestId("counter-value")).toHaveText("0");
 
   await page.getByRole("button", { name: "Open", exact: true }).click();
+  await page.getByRole("button", { name: /examples\.counter/ }).click();
   await page.getByRole("combobox", { name: "Action" }).selectOption("increment");
   await page.getByLabel("Action input JSON").fill('{"amount": 3}');
   await page.getByRole("button", { name: "Prepare" }).click();

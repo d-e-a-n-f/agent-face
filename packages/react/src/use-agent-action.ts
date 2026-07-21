@@ -7,7 +7,7 @@ import type {
   AgentPrecondition,
   AgentSensitivity,
 } from "@agentface/core";
-import { defineAgentAction } from "@agentface/core";
+import { defineAgentAction, isAgentFaceError } from "@agentface/core";
 import { useEffect, useRef } from "react";
 import { useAgentBoundary } from "./boundary.js";
 import { useAgentRuntime } from "./context.js";
@@ -118,7 +118,9 @@ export function useAgentAction<
     );
 
     const previewDeclared = initial.preview !== undefined;
-    const registration = runtime.registerAction(instanceId, {
+    let registration;
+    try {
+      registration = runtime.registerAction(instanceId, {
       definition: defineAgentAction<TInput, TResult, AgentActionPreview>({
         id: initial.id,
         name: initial.name,
@@ -145,7 +147,17 @@ export function useAgentAction<
       ...(hasRevision
         ? { getRevision: () => latest.current.getRevision?.() ?? 0 }
         : {}),
-    });
+      });
+    } catch (caught) {
+      // During Strict Mode's remount cycle (or a parent surface remount) this
+      // effect can fire while the context still carries the just-unregistered
+      // instance id. Skip — the effect re-runs with the new id once the
+      // surface's registration state commits.
+      if (isAgentFaceError(caught) && caught.code === "SURFACE_NOT_FOUND") {
+        return;
+      }
+      throw caught;
+    }
     return () => {
       registration.unregister();
     };
