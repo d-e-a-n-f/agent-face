@@ -8,7 +8,7 @@ import {
   useAgentResource,
   useAgentSurface,
 } from "@agentface/react";
-import { useRef, useState } from "react";
+import { usePersistentDomain } from "@/lib/use-persistent-domain";
 import { z } from "zod";
 import type {
   PublicationDomainState,
@@ -576,24 +576,30 @@ function ShareClassCard({
   );
 }
 
-function ProductPublicationFeature(): React.JSX.Element {
-  const [domain, setDomain] = useState<PublicationDomainState>(
-    seedPublicationDomain,
+function isPublicationDomain(value: unknown): value is PublicationDomainState {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as PublicationDomainState).shareClasses) &&
+    Array.isArray((value as PublicationDomainState).workspaces) &&
+    typeof (value as PublicationDomainState).product === "object"
   );
-  // Agent closures read through the ref so sequential actions in one
-  // assistant run always see current state, and domain errors throw
-  // synchronously inside execute (surfacing as EXECUTION_FAILED) instead of
-  // inside a React state updater.
-  const domainRef = useRef(domain);
-  const getDomain = () => domainRef.current;
+}
+
+function ProductPublicationFeature(): React.JSX.Element {
+  const persistent = usePersistentDomain(
+    "agentface-products-v1",
+    seedPublicationDomain,
+    isPublicationDomain,
+  );
+  const domain = persistent.value;
+  const getDomain = persistent.getValue;
   const rootSurface = useAgentSurface();
 
   const mutate = (
     change: (state: PublicationDomainState) => PublicationDomainState,
   ): void => {
-    const next = change(domainRef.current);
-    domainRef.current = next;
-    setDomain(next);
+    persistent.mutate(change);
     rootSurface?.bumpRevision();
   };
 

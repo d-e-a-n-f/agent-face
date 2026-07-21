@@ -33,8 +33,9 @@ test("assistant creates, fills, and sends a client invoice across pages", async 
     "sent after your confirmation",
   );
 
-  // The journey persists on the client's page (in-app navigation — a hard
-  // reload would reset the demo's in-memory store).
+  // The store persists in localStorage: a HARD reload keeps everything.
+  await page.reload();
+  await expect(page.getByTestId("invoice-status")).toHaveText("sent");
   await page.getByRole("link", { name: "Wilshire Group" }).click();
   await expect(page.getByRole("link", { name: "INV-1002" })).toBeVisible();
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 /**
  * The Portal's shared domain: one in-memory store spanning every portal
@@ -331,9 +331,33 @@ export interface PortalStoreApi {
   getStore(): PortalStore;
   /** Applies a pure change; domain errors throw synchronously to the caller. */
   mutate(change: (store: PortalStore) => PortalStore): void;
+  /** Clears the persisted demo data and reseeds. */
+  reset(): void;
 }
 
 const PortalStoreContext = createContext<PortalStoreApi | null>(null);
+
+/** Bump when the store shape changes; stale persisted data falls back to seed. */
+const STORAGE_KEY = "agentface-portal-v1";
+
+function isPortalStore(value: unknown): value is PortalStore {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as PortalStore).clients) &&
+    Array.isArray((value as PortalStore).invoices) &&
+    typeof (value as PortalStore).onboarding === "object" &&
+    typeof (value as PortalStore).nextInvoiceNumber === "number"
+  );
+}
+
+function persist(store: PortalStore): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  } catch {
+    // Storage full/blocked — the demo still works, just without persistence.
+  }
+}
 
 export function PortalStoreProvider({
   children,
@@ -342,6 +366,29 @@ export function PortalStoreProvider({
 }): ReactNode {
   const [store, setStore] = useState<PortalStore>(seedPortalStore);
   const storeRef = useRef(store);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate from localStorage after mount (never during SSR render), so the
+  // demo survives hard reloads. Invalid/stale data falls back to the seed.
+  // One-time post-mount hydration must set state in an effect.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw !== null) {
+        const parsed: unknown = JSON.parse(raw);
+        if (isPortalStore(parsed)) {
+          storeRef.current = parsed;
+          setStore(parsed);
+        }
+      }
+    } catch {
+      // Corrupt payload — keep the seed.
+    }
+    setHydrated(true);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   const api: PortalStoreApi = {
     store,
     getStore: () => storeRef.current,
@@ -349,11 +396,22 @@ export function PortalStoreProvider({
       const next = change(storeRef.current);
       storeRef.current = next;
       setStore(next);
+      persist(next);
+    },
+    reset: () => {
+      const seeded = seedPortalStore();
+      storeRef.current = seeded;
+      setStore(seeded);
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // Ignore.
+      }
     },
   };
   return (
     <PortalStoreContext.Provider value={api}>
-      {children}
+      {hydrated ? children : null}
     </PortalStoreContext.Provider>
   );
 }

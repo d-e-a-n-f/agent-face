@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { ResetDemoButton } from "@/portal/reset-demo";
 
 export default function PortalHome() {
   return (
     <main>
-      <h1 className="text-2xl font-bold">Welcome back</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Welcome back</h1>
+        <ResetDemoButton />
+      </div>
       <p className="mt-2 max-w-2xl text-sm text-neutral-600 dark:text-neutral-400">
         This is a working mini-app — clients, onboarding, invoicing, and
         product publication — where the assistant (bottom right) is a real
