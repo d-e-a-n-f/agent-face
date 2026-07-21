@@ -333,23 +333,21 @@ function onboardingStep(request: AgentModelRequest): AgentModelResponse {
     readonly narration: string;
   }[] = [
     {
-      suffix: "__fill-company",
+      suffix: "__fill-form",
       input: {
-        name: "Northshore Limited",
-        registrationNumber: "09876543",
-        country: "United Kingdom",
+        company: {
+          name: "Northshore Limited",
+          registrationNumber: "09876543",
+          country: "United Kingdom",
+        },
+        address: {
+          street: "1 Harbour Street",
+          city: "London",
+          postcode: "EC2A 4BX",
+        },
+        contact: { name: "Maya Chen", email: "maya@northshore.example" },
       },
-      narration: "Filling in the company details.",
-    },
-    {
-      suffix: "__fill-address",
-      input: { street: "1 Harbour Street", city: "London", postcode: "EC2A 4BX" },
-      narration: "Filling in the registered address.",
-    },
-    {
-      suffix: "__fill-contact",
-      input: { name: "Maya Chen", email: "maya@northshore.example" },
-      narration: "Filling in the primary contact.",
+      narration: "Filling in the onboarding form.",
     },
     {
       suffix: "__save-draft",

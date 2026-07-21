@@ -5,12 +5,12 @@ import { fromZod } from "@agentface/core/zod";
 import {
   AgentSurface,
   useAgentAction,
-  useAgentResource,
   useAgentSurface,
 } from "@agentface/react";
+import { useAgentForm } from "@agentface/react/hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRef, useState } from "react";
-import type { FieldPath, FieldPathByValue } from "react-hook-form";
+import type { FieldPathByValue } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
@@ -76,52 +76,11 @@ const onboardingFace = defineAgentFace({
   tags: ["example", "onboarding"],
 });
 
-const fillCompanyInput = fromZod(
-  z.object({
-    name: z.string().optional(),
-    registrationNumber: z.string().optional().describe("8 digits"),
-    country: z.string().optional(),
-  }),
-);
-const fillAddressInput = fromZod(
-  z.object({
-    street: z.string().optional(),
-    city: z.string().optional(),
-    postcode: z.string().optional(),
-  }),
-);
-const fillContactInput = fromZod(
-  z.object({
-    name: z.string().optional(),
-    email: z.string().optional(),
-  }),
-);
 const emptyInput = fromZod(z.object({}));
 
 interface Meta {
   readonly savedAt: string | null;
   readonly submittedAt: string | null;
-}
-
-function flattenIssues(errors: object, prefix = ""): string[] {
-  return Object.entries(errors as Record<string, unknown>).flatMap(
-    ([key, value]) => {
-      if (value === undefined || value === null) {
-        return [];
-      }
-      const path = prefix === "" ? key : `${prefix}.${key}`;
-      if (
-        typeof value === "object" &&
-        "message" in value &&
-        typeof (value as { message?: unknown }).message === "string"
-      ) {
-        return [`${path}: ${(value as { message: string }).message}`];
-      }
-      return typeof value === "object"
-        ? flattenIssues(value as object, path)
-        : [];
-    },
-  );
 }
 
 function OnboardingFeature(): React.JSX.Element {
@@ -144,75 +103,15 @@ function OnboardingFeature(): React.JSX.Element {
 
   const notSubmitted = () => metaRef.current.submittedAt === null;
 
-  /** The agent's write-path: through the SAME form the human is editing. */
-  function fillSection<TSection extends keyof OnboardingValues>(
-    section: TSection,
-    values: Partial<OnboardingValues[TSection]>,
-  ): { readonly values: OnboardingValues[TSection]; readonly issues: string[] } {
-    for (const [key, value] of Object.entries(values)) {
-      if (typeof value === "string") {
-        form.setValue(
-          `${section}.${key}` as FieldPath<OnboardingValues>,
-          value,
-          { shouldValidate: true, shouldDirty: true, shouldTouch: true },
-        );
-      }
-    }
-    const sectionErrors = form.formState.errors[section];
-    return {
-      values: form.getValues(section),
-      issues: sectionErrors !== undefined ? flattenIssues(sectionErrors) : [],
-    };
-  }
-
-  useAgentResource({
-    id: "form-state",
-    name: "Onboarding form state",
+  // One hook agent-enables the whole form: a form-state resource and a
+  // partial fill action derived from the form itself (the resolver stays
+  // the source of truth for validation).
+  useAgentForm({
+    form,
+    name: "Onboarding form",
     description:
-      "The current values of the onboarding form, plus draft/submission status",
-    getValue: () => ({
-      values: form.getValues(),
-      savedAt: metaRef.current.savedAt,
-      submittedAt: metaRef.current.submittedAt,
-    }),
-  });
-
-  useAgentResource({
-    id: "validation",
-    name: "Form validation",
-    description: "Outstanding validation issues preventing submission",
-    getValue: () => ({
-      issues: flattenIssues(form.formState.errors),
-    }),
-  });
-
-  useAgentAction({
-    id: "fill-company",
-    name: "Fill company details",
-    description:
-      "Fill some or all of the company section (name, 8-digit registration number, country). The human sees the fields populate and can edit them.",
-    input: fillCompanyInput,
-    isAvailable: notSubmitted,
-    execute: (input) => fillSection("company", input),
-  });
-
-  useAgentAction({
-    id: "fill-address",
-    name: "Fill registered address",
-    description:
-      "Fill some or all of the address section (street, city, postcode).",
-    input: fillAddressInput,
-    isAvailable: notSubmitted,
-    execute: (input) => fillSection("address", input),
-  });
-
-  useAgentAction({
-    id: "fill-contact",
-    name: "Fill primary contact",
-    description: "Fill some or all of the primary contact (name, email).",
-    input: fillContactInput,
-    isAvailable: notSubmitted,
-    execute: (input) => fillSection("contact", input),
+      "the client onboarding form: company (name, 8-digit registration number, country), registered address (street, city, postcode), and primary contact (name, email)",
+    isEnabled: notSubmitted,
   });
 
   useAgentAction({

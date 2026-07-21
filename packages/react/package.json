@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./hook-form": {
+      "types": "./dist/hook-form.d.ts",
+      "default": "./dist/hook-form.js"
     }
   },
   "files": [
@@ -39,9 +43,16 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "typescript": "5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "react-hook-form": "^7.54.0"
   },
   "peerDependencies": {
-    "react": "^19"
+    "react": "^19",
+    "react-hook-form": ">=7"
+  },
+  "peerDependenciesMeta": {
+    "react-hook-form": {
+      "optional": true
+    }
   }
 }
