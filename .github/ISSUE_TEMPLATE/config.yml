@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question / idea discussion
+    url: https://github.com/d-e-a-n-f/agent-face/discussions
+    about: For questions and open-ended ideas, start a discussion instead.
+  - name: Security vulnerability
+    url: https://github.com/d-e-a-n-f/agent-face/security/advisories/new
+    about: Please report vulnerabilities privately, never as public issues.

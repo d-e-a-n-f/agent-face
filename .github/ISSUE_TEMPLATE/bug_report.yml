@@ -1,0 +1,34 @@
+name: Bug report
+description: Something isn't working as documented
+labels: [bug]
+body:
+  - type: input
+    id: packages
+    attributes:
+      label: Affected package(s) and version(s)
+      placeholder: "@agentface/runtime 0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Smallest code/steps that show the problem. A repo or StackBlitz link is ideal.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: trace
+    attributes:
+      label: DevTools trace (if relevant)
+      description: The Trace section of the AgentFace DevTools panel often pinpoints lifecycle issues.
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "Node 22, Next 16.1, React 19.2, macOS"
