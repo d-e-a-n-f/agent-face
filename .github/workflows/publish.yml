@@ -1,0 +1,50 @@
+name: Publish
+
+# Publishes to npm in exactly two cases:
+#  1. The "Version packages" PR was merged — the explicit release decision.
+#  2. Manual dispatch (Actions → Publish → Run workflow) — for retries
+#     after a transient failure; `changeset publish` is idempotent and
+#     only publishes versions missing from the registry.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: publish
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Version packages')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      # No registry-url on setup-node: it would write an .npmrc referencing
+      # NODE_AUTH_TOKEN (unset → placeholder) that shadows the real token.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Publish to npm
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "$HOME/.npmrc"
+          pnpm changeset publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Push release tags
+        run: git push origin --tags
