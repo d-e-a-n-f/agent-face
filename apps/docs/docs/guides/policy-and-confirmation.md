@@ -10,18 +10,27 @@ Every operation — discovery, resource reads, action inspection, execution —
 is checked against your policy engine before it happens:
 
 ```ts
-import {
-  createPolicyEngine,
-  enforceActionConfirmation,
-  enforceSensitivity,
-  requireAuthenticatedAgent,
-} from "@agentface/policy";
+import { standardUserPolicy, developmentPolicy } from "@agentface/policy";
 
-const policy = createPolicyEngine([
-  enforceActionConfirmation(),                      // confidential+ ⇒ confirm
-  enforceSensitivity({ execute: "confidential" }),  // restricted ⇒ deny
-]);
+// Development: allow everything, but exercise the confirmation UX from
+// day one (confidential+ still confirms):
+const dev = developmentPolicy();
+
+// Production baseline: authenticated user required, agents need a valid
+// delegation, restricted denied outright, confidential+ confirmed:
+const policy = standardUserPolicy({
+  rules: [requireRole("finance-admin", { forActions: ["send"] })],
+});
 ```
+
+Presets are compositions of the same rule primitives you can use directly
+(`createPolicyEngine([...])`): `requireUser`, `requireRole`,
+`requireSameTenant`, `requireDelegation`, `enforceSensitivity`,
+`enforceActionConfirmation`, `limitActionRate`, `limitMonetaryValue`,
+`denyOutsideBusinessHours`, and `readOnlyPolicy()` for look-but-don't-touch
+access. Rules with a data dependency take an extractor (e.g.
+`limitMonetaryValue({ amountOf })`) — AgentFace never guesses which input
+field is money or where roles live.
 
 Semantics: rules run in order; `undefined` abstains; the **first deny wins**;
 any `confirm` escalates an allow; the default effect is configurable

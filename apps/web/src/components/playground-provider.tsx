@@ -1,11 +1,7 @@
 "use client";
 
 import { AgentFaceApp } from "@agentface/next/app";
-import {
-  createPolicyEngine,
-  enforceActionConfirmation,
-  enforceSensitivity,
-} from "@agentface/policy";
+import { standardUserPolicy } from "@agentface/policy";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { createE2eMockAdapter } from "@/lib/e2e-mock-adapter";
@@ -27,12 +23,10 @@ export function PlaygroundProvider({
     <AgentFaceApp
       application={{ id: "agentface-playground", name: "AgentFace Playground" }}
       user={{ type: "user", id: "user_dean", displayName: "Dean" }}
-      policy={createPolicyEngine([
-        // confidential+ executions require confirmation; restricted ones are
-        // denied outright (see the invoice write-off demo).
-        enforceActionConfirmation(),
-        enforceSensitivity({ execute: "confidential" }),
-      ])}
+      // The shipped production baseline: authenticated user required,
+      // restricted capabilities denied outright (the invoice write-off
+      // demo), confidential+ executions confirmed.
+      policy={standardUserPolicy()}
       routes={[
         { path: "/", description: "Playground home" },
         { path: "/examples/counter", description: "Counter learning example" },
