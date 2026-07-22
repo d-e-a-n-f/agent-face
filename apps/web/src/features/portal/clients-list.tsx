@@ -22,10 +22,12 @@ const clientsFace = defineAgentFace({
   tags: ["portal", "clients"],
 });
 
-interface Filters {
+// A type alias (not interface) so it satisfies JsonValue structurally —
+// action results must be JSON-serialisable.
+type Filters = {
   readonly status: "all" | "prospect" | "active" | "churned";
   readonly minimumValue: number;
-}
+};
 
 const applyFilterInput = fromZod(
   z.object({

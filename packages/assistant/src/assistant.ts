@@ -34,16 +34,31 @@ export interface CreateAssistantOptions {
   readonly systemPrompt?: string;
   /** Maximum model round-trips per `send`. Default 12. */
   readonly maxIterations?: number;
-  /** Principals the assistant's runtime operations run as. */
-  readonly principals?: PrincipalContext;
+  /**
+   * Principals the assistant's runtime operations run as — every discovery,
+   * read, preparation, confirmation, and execution carries them. The
+   * function form is resolved per operation, so login/logout changes apply
+   * immediately (and invalidate outstanding preparations).
+   */
+  readonly principals?: PrincipalContext | (() => PrincipalContext);
   /** Notified whenever the conversation changes (for UI binding). */
   readonly onUpdate?: () => void;
 }
 
 /** A conversational assistant bound to one AgentFace runtime. */
 export interface AgentFaceAssistant {
-  /** Sends a user instruction and runs the tool loop until the model finishes. */
+  /**
+   * Sends a user instruction and runs the tool loop until the model
+   * finishes. Concurrent calls queue: a send starts only after the previous
+   * one settles, so conversations never interleave.
+   */
   send(text: string): Promise<readonly AssistantMessage[]>;
+  /**
+   * Cancels the in-flight run (and drains anything queued behind it): the
+   * loop stops before its next model round-trip. An action already past
+   * confirmation completes — cancellation never truncates an execution.
+   */
+  cancel(): void;
   getMessages(): readonly AssistantMessage[];
   reset(): void;
 }
@@ -64,8 +79,29 @@ const EMPTY_OBJECT_SCHEMA: JsonObject = {
   additionalProperties: false,
 };
 
+/** Model providers cap tool names at 64 characters. */
+const MAX_TOOL_NAME_LENGTH = 64;
+
 function sanitizeToolName(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+  return raw.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, MAX_TOOL_NAME_LENGTH);
+}
+
+/**
+ * Resolves tool-name collisions by numbering within the length budget:
+ * the suffix replaces the tail of the base name, so two ids sharing a long
+ * prefix can never loop.
+ */
+function uniqueToolName(base: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(base)) {
+    return base;
+  }
+  for (let attempt = 2; ; attempt += 1) {
+    const suffix = `_${attempt}`;
+    const candidate = `${base.slice(0, MAX_TOOL_NAME_LENGTH - suffix.length)}${suffix}`;
+    if (!taken.has(candidate)) {
+      return candidate;
+    }
+  }
 }
 
 interface ActionBinding {
@@ -141,12 +177,10 @@ function buildTools(surfaces: readonly AgentDiscoveredSurface[]): ToolSurface {
 
   for (const surface of surfaces) {
     for (const action of surface.actions) {
-      let name = sanitizeToolName(
-        `${surface.instance.face.id}__${action.id}`,
+      const name = uniqueToolName(
+        sanitizeToolName(`${surface.instance.face.id}__${action.id}`),
+        new Set(actionBindings.keys()),
       );
-      while (actionBindings.has(name)) {
-        name = sanitizeToolName(`${name}_2`);
-      }
       actionBindings.set(name, {
         instanceId: surface.instance.instanceId,
         actionId: action.id,
@@ -206,13 +240,22 @@ export function createAssistant(
     adapter,
     systemPrompt = DEFAULT_SYSTEM_PROMPT,
     maxIterations = 12,
-    principals,
     onUpdate,
   } = options;
   const requestConfirmation =
     options.requestConfirmation ?? (async () => "declined" as const);
 
+  function currentPrincipals(): PrincipalContext | undefined {
+    return typeof options.principals === "function"
+      ? options.principals()
+      : options.principals;
+  }
+
   let messages: AssistantMessage[] = [];
+  let queue: Promise<unknown> = Promise.resolve();
+  // cancel() bumps the generation; runs started before the bump (in-flight
+  // or queued) stop at their next checkpoint, while later sends run freshly.
+  let generation = 0;
 
   function append(message: AssistantMessage): void {
     messages = [...messages, message];
@@ -223,6 +266,7 @@ export function createAssistant(
     binding: ActionBinding,
     input: JsonValue,
   ): Promise<{ result: JsonValue; isError?: boolean }> {
+    const principals = currentPrincipals();
     let prepared: PreparedAgentAction;
     try {
       prepared = await runtime.prepareAction({
@@ -281,9 +325,12 @@ export function createAssistant(
     call: AgentModelToolCall,
     tools: ToolSurface,
   ): Promise<AssistantContentPart> {
+    const principals = currentPrincipals();
     let outcome: { result: JsonValue; isError?: boolean };
     if (call.toolName === "discover_surfaces") {
-      const discovery = await runtime.discover();
+      const discovery = await runtime.discover({
+        ...(principals !== undefined ? { principals } : {}),
+      });
       outcome = { result: describeSurfaces(discovery.surfaces) };
     } else if (call.toolName === "read_resource") {
       const input = call.input as { instanceId?: string; resourceId?: string };
@@ -324,14 +371,24 @@ export function createAssistant(
     };
   }
 
-  async function send(text: string): Promise<readonly AssistantMessage[]> {
+  async function runSend(
+    text: string,
+    myGeneration: number,
+  ): Promise<readonly AssistantMessage[]> {
     const startIndex = messages.length;
     append({ role: "user", content: [{ type: "text", text }] });
 
     for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+      if (myGeneration !== generation) {
+        break;
+      }
       // Rebuilt every round: executed actions change availability,
-      // revisions, and values.
-      const discovery = await runtime.discover();
+      // revisions, and values. Discovery runs as the current principals, so
+      // denied capabilities never become model tools.
+      const principals = currentPrincipals();
+      const discovery = await runtime.discover({
+        ...(principals !== undefined ? { principals } : {}),
+      });
       const tools = buildTools(discovery.surfaces);
       const system = `${systemPrompt}\n\n## Currently mounted surfaces\n${JSON.stringify(describeSurfaces(discovery.surfaces), null, 2)}`;
 
@@ -340,6 +397,9 @@ export function createAssistant(
         messages,
         tools: tools.definitions,
       });
+      if (myGeneration !== generation) {
+        break;
+      }
 
       const assistantParts: AssistantContentPart[] = [
         ...(response.text !== undefined && response.text.length > 0
@@ -374,8 +434,22 @@ export function createAssistant(
     return messages.slice(startIndex);
   }
 
+  function send(text: string): Promise<readonly AssistantMessage[]> {
+    // Sends serialise on one queue: concurrent callers wait rather than
+    // interleaving tool rounds in the shared conversation. The generation
+    // is captured at call time, so a cancel() drains everything already
+    // sent while later sends run normally.
+    const myGeneration = generation;
+    const run = queue.then(() => runSend(text, myGeneration));
+    queue = run.catch(() => undefined);
+    return run;
+  }
+
   return {
     send,
+    cancel: () => {
+      generation += 1;
+    },
     getMessages: () => messages,
     reset: () => {
       messages = [];

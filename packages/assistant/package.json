@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Model adapters and the assistant loop for operating AgentFace runtimes",
   "license": "MIT",
-  "private": true,
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -67,5 +66,16 @@
     "react": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/assistant"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

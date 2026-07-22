@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "React bindings for the AgentFace runtime",
   "license": "MIT",
-  "private": true,
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -54,5 +53,16 @@
     "react-hook-form": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/react"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -14,6 +14,11 @@ export const AGENT_ERROR_CODES = [
   "CONFIRMATION_REQUIRED",
   "STALE_STATE",
   "EXECUTION_FAILED",
+  "AVAILABILITY_CHECK_FAILED",
+  "PRECONDITION_CHECK_FAILED",
+  "PREVIEW_FAILED",
+  "RESOURCE_READ_FAILED",
+  "PRINCIPAL_CHANGED",
 ] as const;
 
 /** A stable, serialisable AgentFace error code. */

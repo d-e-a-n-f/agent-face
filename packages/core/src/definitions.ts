@@ -34,6 +34,12 @@ export function humanizeId(id: string): string {
 const ID_PATTERN = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/i;
 /** Semver-style: `0.1.0`, `1.2.3-beta.1`. */
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9a-z.-]+)?$/i;
+/**
+ * Hard cap on identifier length. Ids feed model tool names (which providers
+ * cap at 64 characters) and trace output; a bound keeps derived names
+ * collision-resolvable.
+ */
+export const MAX_ID_LENGTH = 48;
 
 function invalid(message: string): never {
   throw new AgentFaceError({ code: "INVALID_INPUT", message });
@@ -43,6 +49,11 @@ function assertId(id: string, what: string): void {
   if (typeof id !== "string" || !ID_PATTERN.test(id)) {
     invalid(
       `${what} id ${JSON.stringify(id)} is invalid: expected dot/dash-separated segments like "billing.invoice"`,
+    );
+  }
+  if (id.length > MAX_ID_LENGTH) {
+    invalid(
+      `${what} id ${JSON.stringify(id)} is too long: maximum ${MAX_ID_LENGTH} characters`,
     );
   }
 }
@@ -142,7 +153,7 @@ export function defineAgentResource<TValue = JsonValue>(
  */
 export function defineAgentAction<
   TInput,
-  TResult,
+  TResult extends JsonValue,
   TPreview extends AgentActionPreview = AgentActionPreview,
 >(
   definition: AgentActionDefinition<TInput, TResult, TPreview>,

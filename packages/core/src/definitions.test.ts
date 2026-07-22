@@ -11,6 +11,7 @@ import {
   defineAgentResource,
 } from "./definitions.js";
 import { AgentFaceError } from "./errors.js";
+import type { JsonValue } from "./json.js";
 import type { AgentResourceDefinition } from "./resources.js";
 import type { AgentInputSchema } from "./schema.js";
 
@@ -94,6 +95,15 @@ describe("defineAgentFace", () => {
     expect(
       defineAgentFace({ ...validFace, version: "1.0.0-beta.1" }).version,
     ).toBe("1.0.0-beta.1");
+  });
+
+  it("rejects ids over the length cap (they feed 64-char model tool names)", () => {
+    expectInvalidInput(() =>
+      defineAgentFace({ ...validFace, id: "a".repeat(49) }),
+    );
+    expect(defineAgentFace({ ...validFace, id: "a".repeat(48) }).id).toHaveLength(
+      48,
+    );
   });
 });
 
@@ -179,7 +189,7 @@ describe("defineAgentAction", () => {
     expectInvalidInput(() =>
       defineAgentAction({
         ...validAction,
-        execute: undefined as unknown as (input: SendInput) => void,
+        execute: undefined as unknown as (input: SendInput) => JsonValue,
       }),
     );
   });

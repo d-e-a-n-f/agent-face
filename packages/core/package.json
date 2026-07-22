@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "AgentFace contract types and definition helpers",
   "license": "MIT",
-  "private": true,
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -42,5 +41,16 @@
     "zod": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/core"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

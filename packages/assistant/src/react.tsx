@@ -1,7 +1,7 @@
 "use client";
 
-import { useAgentRecommendations, useAgentRuntime } from "@agentface/react";
-import type { PreparedAgentAction } from "@agentface/runtime";
+import { useAgentContext, useAgentRecommendations } from "@agentface/react";
+import type { PreparedAgentAction, PrincipalContext } from "@agentface/runtime";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentFaceAssistant as AssistantEngine, ConfirmationDecision } from "./assistant.js";
@@ -26,6 +26,8 @@ export interface UseAgentFaceAssistantResult {
   /** The prepared action currently awaiting the user's decision, if any. */
   readonly pendingConfirmation: PreparedAgentAction | null;
   send(text: string): Promise<void>;
+  /** Stops the current run before its next model round-trip. */
+  cancel(): void;
   confirm(): void;
   decline(): void;
   reset(): void;
@@ -42,13 +44,23 @@ export interface UseAgentFaceAssistantResult {
 export function useAgentFaceAssistant(
   options: UseAgentFaceAssistantOptions = {},
 ): UseAgentFaceAssistantResult {
-  const runtime = useAgentRuntime();
+  const context = useAgentContext();
+  const runtime = context.runtime;
   const [messages, setMessages] = useState<readonly AssistantMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<PreparedAgentAction | null>(null);
   const decisionRef = useRef<((decision: ConfirmationDecision) => void) | null>(
     null,
   );
+
+  // The provider's principals flow into every runtime operation the
+  // assistant performs. A ref + closure keeps them current per operation
+  // without recreating the engine (login/logout applies immediately).
+  const principalsRef = useRef<PrincipalContext>({});
+  principalsRef.current = {
+    ...(context.user !== undefined ? { user: context.user } : {}),
+    ...(context.agent !== undefined ? { agent: context.agent } : {}),
+  };
 
   const adapter = useMemo(
     () =>
@@ -66,6 +78,7 @@ export function useAgentFaceAssistant(
     engineRef.current = createAssistant({
       runtime,
       adapter,
+      principals: () => principalsRef.current,
       ...(options.systemPrompt !== undefined
         ? { systemPrompt: options.systemPrompt }
         : {}),
@@ -124,6 +137,15 @@ export function useAgentFaceAssistant(
     busy,
     pendingConfirmation: pending,
     send,
+    cancel: useCallback(() => {
+      engineRef.current?.cancel();
+      // A pending confirmation belongs to the cancelled run: decline it so
+      // the awaiting promise settles.
+      const resolve = decisionRef.current;
+      decisionRef.current = null;
+      setPending(null);
+      resolve?.("declined");
+    }, []),
     confirm: useCallback(() => settle("confirmed"), [settle]),
     decline: useCallback(() => settle("declined"), [settle]),
     reset: useCallback(() => {
@@ -509,17 +531,28 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
                 }
               }}
             />
-            <button
-              type="button"
-              style={{
-                ...styles.sendButton,
-                ...(locked ? { opacity: 0.5, cursor: "not-allowed" } : {}),
-              }}
-              disabled={locked}
-              onClick={() => void submit()}
-            >
-              {locked ? "Working…" : "Send"}
-            </button>
+            {locked ? (
+              <button
+                type="button"
+                style={{
+                  ...styles.sendButton,
+                  background: "#fff",
+                  color: "#4b3fb5",
+                }}
+                aria-label="Stop the assistant"
+                onClick={assistant.cancel}
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                type="button"
+                style={styles.sendButton}
+                onClick={() => void submit()}
+              >
+                Send
+              </button>
+            )}
           </div>
         </div>
       ) : (

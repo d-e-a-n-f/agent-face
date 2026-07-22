@@ -14,6 +14,7 @@ import type {
 import {
   AgentFaceError,
   emptyInputSchema,
+  findJsonUnsafePath,
   humanizeId,
   isAgentError,
 } from "@agentface/core";
@@ -127,11 +128,43 @@ interface StoredPreparation {
   readonly confirmationRequired: boolean;
   readonly confirmationReason: string | undefined;
   readonly boundRevision: number | undefined;
+  /** The principal context the preparation was authorised under. */
+  readonly principalsFingerprint: string;
   readonly expiresAt: string;
   readonly expiresAtMs: number;
   readonly execute: () => Promise<unknown>;
   readonly traceId: AgentTraceId;
   confirmed: boolean;
+}
+
+/**
+ * Canonical, key-order-independent serialisation of a principal context.
+ * Confirmation and execution bind to the exact principals that prepared the
+ * operation — logout, delegation change, or agent switching between prepare
+ * and execute must invalidate the preparation.
+ */
+function principalsFingerprint(principals: PrincipalContext): string {
+  const canonical = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      return value.map(canonical);
+    }
+    if (typeof value === "object" && value !== null) {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>)
+          .filter(([, entry]) => entry !== undefined)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, entry]) => [key, canonical(entry)]),
+      );
+    }
+    return value;
+  };
+  return JSON.stringify(
+    canonical({
+      user: principals.user ?? null,
+      agent: principals.agent ?? null,
+      delegation: principals.delegation ?? null,
+    }),
+  );
 }
 
 function evaluateConfirmationRule<TInput>(
@@ -382,7 +415,24 @@ export function createAgentRuntime(
     return {
       instanceId,
       setEntity(entity) {
+        const current = surface.entity;
+        const identityChanged =
+          current?.type !== entity?.type || current?.id !== entity?.id;
         surface.entity = entity;
+        if (!identityChanged) {
+          return;
+        }
+        // A preparation (and any confirmation of it) binds to the entity it
+        // was previewed against. Rebinding the surface to another entity
+        // must never let that confirmation execute against the new one.
+        removePreparationsFor(instanceId);
+        surface.revision += 1;
+        emit(generateId("trace"), {
+          type: "surface.entity-changed",
+          instanceId,
+          faceId: surface.face.id,
+          revision: surface.revision,
+        });
       },
       bumpRevision() {
         surface.revision += 1;
@@ -469,7 +519,7 @@ export function createAgentRuntime(
 
   function registerAction<
     TInput,
-    TResult,
+    TResult extends JsonValue,
     TPreview extends AgentActionPreview,
   >(
     instanceId: AgentSurfaceInstanceId,
@@ -585,6 +635,7 @@ export function createAgentRuntime(
         stored.prepare = rebuilt.prepare;
         stored.isAvailable = rebuilt.isAvailable;
         stored.getRevision = rebuilt.getRevision;
+        stored.evaluateRecommendation = rebuilt.evaluateRecommendation;
       },
       unregister() {
         surface.actions.delete(actionId);
@@ -596,12 +647,15 @@ export function createAgentRuntime(
   async function discover(
     query: AgentDiscoveryQuery = {},
   ): Promise<AgentDiscoveryResult> {
+    const principalsContext =
+      query.principals !== undefined ? { principals: query.principals } : {};
     const results: AgentDiscoveredSurface[] = [];
     for (const surface of surfaces.values()) {
       const decision = await evaluatePolicy(
         "discover",
         surface,
         generateId("trace"),
+        principalsContext,
       );
       if (decision.effect === "deny") {
         continue;
@@ -609,14 +663,51 @@ export function createAgentRuntime(
       if (!matchesQuery(surface, query)) {
         continue;
       }
+      // Capability metadata is itself sensitive: a capability the principal
+      // may not inspect/read is omitted entirely, so a denied action's
+      // name, description, and input schema never reach an agent (or become
+      // a model tool).
+      const traceId = generateId("trace");
+      const resources: AgentResourceDescriptor[] = [];
+      for (const resource of surface.resources.values()) {
+        const readDecision = await evaluatePolicy(
+          "read-resource",
+          surface,
+          traceId,
+          {
+            ...principalsContext,
+            resourceId: resource.descriptor.id,
+            ...(resource.sensitivity !== undefined
+              ? { sensitivity: resource.sensitivity }
+              : {}),
+          },
+        );
+        if (readDecision.effect !== "deny") {
+          resources.push(resource.descriptor);
+        }
+      }
+      const actions: AgentActionDescriptor[] = [];
+      for (const action of surface.actions.values()) {
+        const inspectDecision = await evaluatePolicy(
+          "inspect-action",
+          surface,
+          traceId,
+          {
+            ...principalsContext,
+            actionId: action.descriptor.id,
+            ...(action.sensitivity !== undefined
+              ? { sensitivity: action.sensitivity }
+              : {}),
+          },
+        );
+        if (inspectDecision.effect !== "deny") {
+          actions.push(action.descriptor);
+        }
+      }
       results.push({
         instance: snapshotInstance(surface),
-        resources: [...surface.resources.values()].map(
-          (resource) => resource.descriptor,
-        ),
-        actions: [...surface.actions.values()].map(
-          (action) => action.descriptor,
-        ),
+        resources,
+        actions,
       });
     }
     return { surfaces: results };
@@ -712,9 +803,16 @@ export function createAgentRuntime(
             : {}),
         },
       );
+      let available = false;
+      try {
+        available = action.isAvailable();
+      } catch {
+        // A throwing availability closure means "not available" during
+        // inspection; preparation reports it as AVAILABILITY_CHECK_FAILED.
+      }
       actions.push({
         ...action.descriptor,
-        available: action.isAvailable(),
+        available,
         inspectDecision,
       });
     }
@@ -747,7 +845,24 @@ export function createAgentRuntime(
         ...(decision.code !== undefined ? { code: decision.code } : {}),
       });
     }
-    const value = resource.read();
+    let value: JsonValue;
+    try {
+      value = resource.read();
+    } catch (caught) {
+      throw error(
+        "RESOURCE_READ_FAILED",
+        `Reading resource "${request.resourceId}" threw`,
+        { message: caught instanceof Error ? caught.message : String(caught) },
+      );
+    }
+    const unsafePath = findJsonUnsafePath(value, "value");
+    if (unsafePath !== null) {
+      throw error(
+        "RESOURCE_READ_FAILED",
+        `Resource "${request.resourceId}" produced a value that is not JSON-serialisable (at ${unsafePath}) — add a serialize() to its definition`,
+        { unsafePath },
+      );
+    }
     const revision = resource.getRevision?.() ?? surface.revision;
     emit(traceId, {
       type: "resource.read",
@@ -832,7 +947,20 @@ export function createAgentRuntime(
       throw caught; // unreachable; satisfies definite assignment
     }
 
-    if (!action.isAvailable()) {
+    let available: boolean;
+    try {
+      available = action.isAvailable();
+    } catch (caught) {
+      fail(
+        error(
+          "AVAILABILITY_CHECK_FAILED",
+          `The availability check for "${request.actionId}" threw`,
+          { message: caught instanceof Error ? caught.message : String(caught) },
+        ),
+      );
+      throw caught; // unreachable; satisfies definite assignment
+    }
+    if (!available) {
       fail(
         error(
           "PRECONDITION_FAILED",
@@ -843,7 +971,23 @@ export function createAgentRuntime(
     }
 
     for (const precondition of action.preconditions) {
-      const holds = await precondition.check();
+      let holds: boolean;
+      try {
+        holds = await precondition.check();
+      } catch (caught) {
+        fail(
+          error(
+            "PRECONDITION_CHECK_FAILED",
+            `Precondition "${precondition.id}" threw while checking`,
+            {
+              preconditionId: precondition.id,
+              message:
+                caught instanceof Error ? caught.message : String(caught),
+            },
+          ),
+        );
+        throw caught; // unreachable; satisfies definite assignment
+      }
       if (!holds) {
         fail(
           error("PRECONDITION_FAILED", precondition.description, {
@@ -888,10 +1032,38 @@ export function createAgentRuntime(
       );
     }
 
-    const preview =
-      invocation.runPreview !== undefined
-        ? await invocation.runPreview()
-        : undefined;
+    // preview-action is separately gateable: a deny withholds the preview
+    // (its content can be sensitive) without blocking the operation itself.
+    let preview: AgentActionPreview | undefined;
+    if (invocation.runPreview !== undefined) {
+      const previewDecision = await evaluatePolicy(
+        "preview-action",
+        surface,
+        traceId,
+        {
+          ...principalsContext,
+          actionId: request.actionId,
+          ...sensitivityContext,
+          input: invocation.validatedInput,
+        },
+      );
+      if (previewDecision.effect !== "deny") {
+        try {
+          preview = await invocation.runPreview();
+        } catch (caught) {
+          fail(
+            error(
+              "PREVIEW_FAILED",
+              `The preview for "${request.actionId}" threw`,
+              {
+                message:
+                  caught instanceof Error ? caught.message : String(caught),
+              },
+            ),
+          );
+        }
+      }
+    }
 
     const definitionConfirmation = invocation.evaluateConfirmation();
     const confirmationRequired =
@@ -913,6 +1085,9 @@ export function createAgentRuntime(
       confirmationRequired,
       confirmationReason: confirmationRequired ? confirmationReason : undefined,
       boundRevision: revision,
+      principalsFingerprint: principalsFingerprint(
+        resolvePrincipals(request.principals),
+      ),
       expiresAt: new Date(expiresAtMs).toISOString(),
       expiresAtMs,
       execute: invocation.execute,
@@ -968,7 +1143,10 @@ export function createAgentRuntime(
     return preparation;
   }
 
-  function checkPreparationFreshness(preparation: StoredPreparation): void {
+  function checkPreparationFreshness(preparation: StoredPreparation): {
+    readonly surface: StoredSurface;
+    readonly action: StoredAction;
+  } {
     if (now().getTime() > preparation.expiresAtMs) {
       preparations.delete(preparation.preparationId);
       throw error(
@@ -999,6 +1177,26 @@ export function createAgentRuntime(
         { expected: preparation.boundRevision, current: revision },
       );
     }
+    return { surface, action };
+  }
+
+  /**
+   * A preparation is only valid for the principal context that created it.
+   * Logout, delegation change, or a different agent between prepare and
+   * confirm/execute invalidates the preparation.
+   */
+  function checkPreparationPrincipals(
+    preparation: StoredPreparation,
+    override: PrincipalContext | undefined,
+  ): void {
+    const current = principalsFingerprint(resolvePrincipals(override));
+    if (current !== preparation.principalsFingerprint) {
+      preparations.delete(preparation.preparationId);
+      throw error(
+        "PRINCIPAL_CHANGED",
+        `The principal context changed since preparation "${preparation.preparationId}" — prepare the action again`,
+      );
+    }
   }
 
   async function confirmAction(
@@ -1006,6 +1204,7 @@ export function createAgentRuntime(
   ): Promise<ConfirmedAgentAction> {
     const preparation = mustGetPreparation(request.preparationId);
     checkPreparationFreshness(preparation);
+    checkPreparationPrincipals(preparation, request.principals);
     preparation.confirmed = true;
     emit(preparation.traceId, {
       type: "action.confirmed",
@@ -1036,7 +1235,41 @@ export function createAgentRuntime(
         preparation.preparationId,
       );
     }
-    checkPreparationFreshness(preparation);
+    const { surface, action } = checkPreparationFreshness(preparation);
+    checkPreparationPrincipals(preparation, request.principals);
+
+    // Policy is re-evaluated at execution time: an authorisation that held
+    // at preparation (role since revoked, delegation expired, rule changed)
+    // must not remain spendable for the preparation's TTL.
+    const executeDecision = await evaluatePolicy(
+      "execute-action",
+      surface,
+      preparation.traceId,
+      {
+        ...(request.principals !== undefined
+          ? { principals: request.principals }
+          : {}),
+        actionId: preparation.actionId,
+        ...(action.sensitivity !== undefined
+          ? { sensitivity: action.sensitivity }
+          : {}),
+        input: preparation.validatedInput,
+      },
+    );
+    if (executeDecision.effect === "deny") {
+      preparations.delete(preparation.preparationId);
+      throw actionFailure(
+        preparation.traceId,
+        preparation.instanceId,
+        preparation.actionId,
+        error("POLICY_DENIED", executeDecision.reason, {
+          ...(executeDecision.code !== undefined
+            ? { code: executeDecision.code }
+            : {}),
+        }),
+        preparation.preparationId,
+      );
+    }
 
     emit(preparation.traceId, {
       type: "action.executing",
@@ -1049,6 +1282,16 @@ export function createAgentRuntime(
     preparations.delete(preparation.preparationId);
     try {
       const value = await preparation.execute();
+      // Results cross the runtime boundary to agents: enforce the JSON-safe
+      // contract instead of asserting it.
+      const unsafePath = findJsonUnsafePath(value, "result");
+      if (unsafePath !== null) {
+        throw error(
+          "EXECUTION_FAILED",
+          `Action "${preparation.actionId}" returned a value that is not JSON-serialisable (at ${unsafePath})`,
+          { unsafePath },
+        );
+      }
       const durationMs = now().getTime() - startedAtMs;
       emit(preparation.traceId, {
         type: "action.succeeded",
@@ -1061,7 +1304,6 @@ export function createAgentRuntime(
         preparationId: preparation.preparationId,
         surfaceInstanceId: preparation.instanceId,
         actionId: preparation.actionId,
-        // Contract: action results must be JSON-safe to reach agents.
         result: { status: "succeeded", result: value as JsonValue },
         durationMs,
         traceId: preparation.traceId,

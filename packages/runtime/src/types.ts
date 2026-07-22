@@ -32,7 +32,13 @@ export interface RegisterSurfaceInput {
  */
 export interface AgentSurfaceRegistration {
   readonly instanceId: AgentSurfaceInstanceId;
-  /** Updates the entity this surface presents (e.g. when props change). */
+  /**
+   * Updates the entity this surface presents. Changing the entity's
+   * *identity* (type or id) invalidates every outstanding preparation for
+   * the surface and bumps its revision — a confirmation captured for one
+   * entity can never execute against another. Prefer remounting the surface
+   * for a different entity; `displayName`-only updates are free.
+   */
   setEntity(entity: AgentEntityReference | undefined): void;
   /** Increments the instance revision. Call after state mutations so stale prepared actions are rejected. */
   bumpRevision(): number;
@@ -58,7 +64,7 @@ export interface UpdateResourceInput<TValue> {
 /** Registers a live action: the typed definition plus availability/revision getters. */
 export interface RegisterActionInput<
   TInput,
-  TResult,
+  TResult extends JsonValue,
   TPreview extends AgentActionPreview = AgentActionPreview,
 > {
   readonly definition: AgentActionDefinition<TInput, TResult, TPreview>;
@@ -87,6 +93,12 @@ export interface AgentDiscoveryQuery {
   readonly entityType?: string;
   /** Case-insensitive match over face id/name/description, capability names, and tags. */
   readonly text?: string;
+  /**
+   * The identities discovery runs as. Discovery returns only capabilities
+   * this principal may inspect (`inspect-action`) or read
+   * (`read-resource`) — a denied capability's metadata is never returned.
+   */
+  readonly principals?: PrincipalContext;
 }
 
 /** Serialisable resource metadata, without live closures. */
@@ -255,7 +267,7 @@ export interface AgentRuntime {
 
   registerAction<
     TInput,
-    TResult,
+    TResult extends JsonValue,
     TPreview extends AgentActionPreview = AgentActionPreview,
   >(
     instanceId: AgentSurfaceInstanceId,

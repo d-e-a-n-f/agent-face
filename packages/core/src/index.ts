@@ -16,6 +16,7 @@ export {
   defineAgentFace,
   defineAgentResource,
   humanizeId,
+  MAX_ID_LENGTH,
 } from "./definitions.js";
 export type { AgentEventDefinition } from "./definitions.js";
 
@@ -61,6 +62,7 @@ export type {
   AgentTraceId,
 } from "./ids.js";
 
+export { findJsonUnsafePath } from "./json.js";
 export type { JsonObject, JsonPrimitive, JsonValue } from "./json.js";
 
 export type {

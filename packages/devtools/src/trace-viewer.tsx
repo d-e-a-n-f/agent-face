@@ -12,6 +12,8 @@ function describePayload(event: AgentTraceEvent): string {
       return event.surface.instanceId;
     case "surface.unregistered":
       return event.instanceId;
+    case "surface.entity-changed":
+      return `${event.instanceId} → revision ${event.revision}`;
     case "resource.read":
       return `${event.resourceId} @ ${event.instanceId}`;
     case "policy.decided":

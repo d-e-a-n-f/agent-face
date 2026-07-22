@@ -179,16 +179,20 @@ describe("createAgentRuntime", () => {
         .map((event: AgentTraceEvent) => event.type);
       expect(eventTypes).toEqual([
         "surface.registered",
-        "policy.decided", // discover
+        "policy.decided", // discover: surface
+        "policy.decided", // discover: read-resource filter
+        "policy.decided", // discover: inspect-action filter
         "policy.decided", // read
         "resource.read",
         "action.preparing",
         "policy.decided", // inspect-action
         "policy.decided", // execute-action
+        "policy.decided", // preview-action
         "action.prepared",
         "action.confirmation-required",
         "action.failed", // execute attempt before confirmation
         "action.confirmed",
+        "policy.decided", // execute-action re-evaluated at execution
         "action.executing",
         "action.succeeded",
         "policy.decided", // re-read
@@ -669,6 +673,292 @@ describe("createAgentRuntime", () => {
       expect(
         seen.filter((event) => event.type === "surface.unregistered"),
       ).toHaveLength(0);
+    });
+  });
+
+  describe("hardening", () => {
+    it("changing the entity identity invalidates outstanding preparations", async () => {
+      const { surface } = setupInvoice(runtime);
+      const prepared = await runtime.prepareAction({
+        instanceId: surface.instanceId,
+        actionId: "send",
+        input: { message: "for entity A" },
+      });
+      await runtime.confirmAction({ preparationId: prepared.preparationId });
+
+      // The surface rebinds to a different invoice before execution.
+      surface.setEntity({ type: "invoice", id: "inv_OTHER" });
+
+      await expectCode(
+        runtime.executeAction({ preparationId: prepared.preparationId }),
+        "ACTION_NOT_FOUND",
+      );
+      expect(
+        runtime
+          .getTraceEvents()
+          .filter((event) => event.type === "surface.entity-changed"),
+      ).toHaveLength(1);
+    });
+
+    it("a displayName-only entity update does not invalidate preparations", async () => {
+      const { surface } = setupInvoice(runtime);
+      const prepared = await runtime.prepareAction({
+        instanceId: surface.instanceId,
+        actionId: "send",
+        input: { message: "still valid" },
+      });
+      await runtime.confirmAction({ preparationId: prepared.preparationId });
+      surface.setEntity({
+        type: "invoice",
+        id: "inv_9821",
+        displayName: "Invoice #9821",
+      });
+      const execution = await runtime.executeAction({
+        preparationId: prepared.preparationId,
+      });
+      expect(execution.result.status).toBe("succeeded");
+    });
+
+    it("a changed principal context between prepare and execute is rejected", async () => {
+      const { surface } = setupInvoice(runtime);
+      const prepared = await runtime.prepareAction({
+        instanceId: surface.instanceId,
+        actionId: "send",
+        input: { message: "as dean" },
+        principals: { user: { type: "user", id: "user_dean" } },
+      });
+      await runtime.confirmAction({
+        preparationId: prepared.preparationId,
+        principals: { user: { type: "user", id: "user_dean" } },
+      });
+      await expectCode(
+        runtime.executeAction({
+          preparationId: prepared.preparationId,
+          principals: { user: { type: "user", id: "user_other" } },
+        }),
+        "PRINCIPAL_CHANGED",
+      );
+    });
+
+    it("execute policy is re-evaluated at execution time", async () => {
+      let denyNow = false;
+      const flippingRuntime = createAgentRuntime({
+        now: () => new Date(nowMs),
+        policy: {
+          evaluate: (request) =>
+            Promise.resolve(
+              request.operation === "execute-action" && denyNow
+                ? { effect: "deny" as const, reason: "Revoked after prepare" }
+                : { effect: "allow" as const },
+            ),
+        },
+      });
+      const { surface } = setupInvoice(flippingRuntime);
+      const prepared = await flippingRuntime.prepareAction({
+        instanceId: surface.instanceId,
+        actionId: "send",
+        input: { message: "authorised then revoked" },
+      });
+      await flippingRuntime.confirmAction({
+        preparationId: prepared.preparationId,
+      });
+      denyNow = true;
+      await expectCode(
+        flippingRuntime.executeAction({
+          preparationId: prepared.preparationId,
+        }),
+        "POLICY_DENIED",
+      );
+    });
+
+    it("discovery omits capabilities the principal may not inspect or read", async () => {
+      const filteringRuntime = createAgentRuntime({
+        policy: {
+          evaluate: (request) =>
+            Promise.resolve(
+              request.operation === "inspect-action" &&
+                request.actionId === "send"
+                ? { effect: "deny" as const, reason: "Hidden" }
+                : { effect: "allow" as const },
+            ),
+        },
+      });
+      setupInvoice(filteringRuntime);
+      const discovery = await filteringRuntime.discover();
+      expect(discovery.surfaces).toHaveLength(1);
+      expect(discovery.surfaces[0]?.actions).toHaveLength(0);
+      expect(discovery.surfaces[0]?.resources).toHaveLength(1);
+    });
+
+    it("a preview-action deny withholds the preview without blocking the operation", async () => {
+      const previewDenyingRuntime = createAgentRuntime({
+        policy: {
+          evaluate: (request) =>
+            Promise.resolve(
+              request.operation === "preview-action"
+                ? { effect: "deny" as const, reason: "Preview withheld" }
+                : { effect: "allow" as const },
+            ),
+        },
+      });
+      const { surface } = setupInvoice(previewDenyingRuntime);
+      const prepared = await previewDenyingRuntime.prepareAction({
+        instanceId: surface.instanceId,
+        actionId: "send",
+        input: { message: "no preview" },
+      });
+      expect(prepared.preview).toBeUndefined();
+      expect(prepared.confirmationRequired).toBe(true);
+    });
+
+    it("throwing availability/precondition/preview closures produce stable codes", async () => {
+      const { surface } = setupInvoice(runtime);
+      const boom = (): never => {
+        throw new Error("boom");
+      };
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "availability-throws",
+          description: "Availability closure throws",
+          execute: () => ({ ok: true }),
+        }),
+        isAvailable: boom,
+      });
+      await expectCode(
+        runtime.prepareAction({
+          instanceId: surface.instanceId,
+          actionId: "availability-throws",
+          input: {},
+        }),
+        "AVAILABILITY_CHECK_FAILED",
+      );
+
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "precondition-throws",
+          description: "Precondition closure throws",
+          preconditions: [
+            { id: "explodes", description: "Explodes", check: boom },
+          ],
+          execute: () => ({ ok: true }),
+        }),
+      });
+      await expectCode(
+        runtime.prepareAction({
+          instanceId: surface.instanceId,
+          actionId: "precondition-throws",
+          input: {},
+        }),
+        "PRECONDITION_CHECK_FAILED",
+      );
+
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "preview-throws",
+          description: "Preview closure throws",
+          preview: boom,
+          execute: () => ({ ok: true }),
+        }),
+      });
+      await expectCode(
+        runtime.prepareAction({
+          instanceId: surface.instanceId,
+          actionId: "preview-throws",
+          input: {},
+        }),
+        "PREVIEW_FAILED",
+      );
+    });
+
+    it("a throwing or non-JSON resource getter yields RESOURCE_READ_FAILED", async () => {
+      const { surface } = setupInvoice(runtime);
+      runtime.registerResource(surface.instanceId, {
+        definition: defineAgentResource({
+          id: "throws",
+          description: "Getter throws",
+        }),
+        getValue: () => {
+          throw new Error("read boom");
+        },
+      });
+      await expectCode(
+        runtime.readResource({
+          instanceId: surface.instanceId,
+          resourceId: "throws",
+        }),
+        "RESOURCE_READ_FAILED",
+      );
+
+      runtime.registerResource(surface.instanceId, {
+        definition: defineAgentResource<Date>({
+          id: "unsafe",
+          description: "Not JSON-serialisable",
+          // Bypasses serialize on purpose to hit the runtime check.
+          serialize: (value) => value as unknown as { readonly [k: string]: never },
+        }),
+        getValue: () => new Date(nowMs),
+      });
+      const failure = await expectCode(
+        runtime.readResource({
+          instanceId: surface.instanceId,
+          resourceId: "unsafe",
+        }),
+        "RESOURCE_READ_FAILED",
+      );
+      expect(failure.message).toContain("not JSON-serialisable");
+    });
+
+    it("a non-JSON action result becomes a failed EXECUTION_FAILED outcome", async () => {
+      const { surface } = setupInvoice(runtime);
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "returns-a-date",
+          description: "Returns a class instance",
+          execute: () => new Date(nowMs) as unknown as { readonly [k: string]: never },
+        }),
+      });
+      const prepared = await runtime.prepareAction({
+        instanceId: surface.instanceId,
+        actionId: "returns-a-date",
+        input: {},
+      });
+      const execution = await runtime.executeAction({
+        preparationId: prepared.preparationId,
+      });
+      expect(execution.result.status).toBe("failed");
+      if (execution.result.status === "failed") {
+        expect(execution.result.error.code).toBe("EXECUTION_FAILED");
+        expect(execution.result.error.message).toContain(
+          "not JSON-serialisable",
+        );
+      }
+    });
+
+    it("update() swaps the recommendation closure too", () => {
+      const { surface } = setupInvoice(runtime);
+      let recommendNow = false;
+      const registration = runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "step",
+          description: "A recommendable step",
+          recommend: { when: () => false },
+          execute: () => ({ ok: true }),
+        }),
+      });
+      registration.update({
+        definition: defineAgentAction({
+          id: "step",
+          description: "A recommendable step",
+          recommend: { when: () => recommendNow },
+          execute: () => ({ ok: true }),
+        }),
+      });
+      recommendNow = true;
+      expect(
+        runtime
+          .getRecommendedActions()
+          .some((recommendation) => recommendation.actionId === "step"),
+      ).toBe(true);
     });
   });
 });

@@ -119,10 +119,13 @@ describe("AgentFaceAssistant widget", () => {
     );
     expect(input.disabled).toBe(true);
     expect(input.placeholder).toContain("Waiting for your confirmation");
+    // While locked, sending is replaced by a Stop control.
     expect(
-      screen.getByRole<HTMLButtonElement>("button", { name: "Working…" })
-        .disabled,
-    ).toBe(true);
+      screen.queryByRole("button", { name: "Send" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Stop the assistant" }),
+    ).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Confirm" }));
     await waitFor(() => {

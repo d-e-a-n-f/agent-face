@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Deterministic testing helpers for AgentFace",
   "license": "MIT",
-  "private": true,
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -61,5 +60,16 @@
     "react": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/testing"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

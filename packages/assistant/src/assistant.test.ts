@@ -371,4 +371,137 @@ describe("createAssistant", () => {
     // discover_surfaces + read_resource + 2 actions, on both iterations.
     expect(seenToolCounts).toEqual([4, 4]);
   });
+
+  it("a policy-denied action never becomes a model tool", async () => {
+    const runtime = createAgentRuntime({
+      policy: {
+        evaluate: (request) =>
+          Promise.resolve(
+            request.operation === "inspect-action" && request.actionId === "send"
+              ? { effect: "deny" as const, reason: "Hidden from agents" }
+              : { effect: "allow" as const },
+          ),
+      },
+    });
+    setupInvoice(runtime);
+    let seenTools: readonly string[] = [];
+    const assistant = createAssistant({
+      runtime,
+      adapter: createMockModelAdapter([
+        (request) => {
+          seenTools = request.tools.map((tool) => tool.name);
+          return { toolCalls: [], stopReason: "end-turn", text: "ok" };
+        },
+      ]),
+    });
+    await assistant.send("What can you do?");
+    expect(seenTools.some((name) => name.endsWith("__send"))).toBe(false);
+    expect(seenTools.some((name) => name.endsWith("__add-line-item"))).toBe(
+      true,
+    );
+  });
+
+  it("tool-name collisions on long shared prefixes resolve without looping", async () => {
+    const runtime = createAgentRuntime();
+    // Two surfaces of the same face: identical action tool names whose
+    // sanitised base is exactly at the 64-character cap.
+    const face = defineAgentFace({
+      id: "a".repeat(48),
+      description: "Long-id face",
+    });
+    for (let index = 0; index < 3; index += 1) {
+      const surface = runtime.registerSurface({ face });
+      runtime.registerAction(surface.instanceId, {
+        definition: defineAgentAction({
+          id: "b".repeat(20),
+          description: "Long-id action",
+          execute: () => ({ ok: true }),
+        }),
+      });
+    }
+    let seenTools: readonly string[] = [];
+    const assistant = createAssistant({
+      runtime,
+      adapter: createMockModelAdapter([
+        (request) => {
+          seenTools = request.tools.map((tool) => tool.name);
+          return { toolCalls: [], stopReason: "end-turn", text: "ok" };
+        },
+      ]),
+    });
+    await assistant.send("hello");
+    const actionTools = seenTools.filter((name) => name.startsWith("aaaa"));
+    expect(actionTools).toHaveLength(3);
+    expect(new Set(actionTools).size).toBe(3);
+    for (const name of actionTools) {
+      expect(name.length).toBeLessThanOrEqual(64);
+    }
+  });
+
+  it("concurrent sends queue instead of interleaving", async () => {
+    const runtime = createAgentRuntime();
+    setupInvoice(runtime);
+    const order: string[] = [];
+    const assistant = createAssistant({
+      runtime,
+      adapter: {
+        complete: async (request) => {
+          const text = request.messages
+            .filter((message) => message.role === "user")
+            .at(-1)
+            ?.content.find((part) => part.type === "text");
+          const label = text?.type === "text" ? text.text : "?";
+          order.push(`start:${label}`);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          order.push(`end:${label}`);
+          return { toolCalls: [], stopReason: "end-turn" as const, text: "ok" };
+        },
+      },
+    });
+    await Promise.all([assistant.send("first"), assistant.send("second")]);
+    expect(order).toEqual([
+      "start:first",
+      "end:first",
+      "start:second",
+      "end:second",
+    ]);
+  });
+
+  it("cancel() stops the loop before the next model round-trip", async () => {
+    const runtime = createAgentRuntime();
+    const { surface } = setupInvoice(runtime);
+    let completions = 0;
+    const assistant = createAssistant({
+      runtime,
+      adapter: {
+        complete: async (request) => {
+          completions += 1;
+          // A real model round-trip crosses the event loop; without this
+          // the whole loop would finish in microtasks before cancel() runs.
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          // Keep asking for another read forever; only cancel stops it.
+          const read = request.tools.find((tool) => tool.name === "read_resource");
+          return {
+            toolCalls: [
+              {
+                toolCallId: `call_${completions}`,
+                toolName: read?.name ?? "read_resource",
+                input: {
+                  instanceId: surface.instanceId,
+                  resourceId: "summary",
+                } as never,
+              },
+            ],
+            stopReason: "tool-use" as const,
+          };
+        },
+      },
+    });
+    const run = assistant.send("loop forever");
+    // Let one round-trip land, then cancel.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assistant.cancel();
+    await run;
+    expect(completions).toBeLessThan(12);
+  });
 });

@@ -11,6 +11,8 @@ function describeEvent(event: AgentRuntimeEvent): string {
       return `registered ${event.surface.instanceId}`;
     case "surface.unregistered":
       return `unregistered ${event.instanceId}`;
+    case "surface.entity-changed":
+      return `entity changed on ${event.instanceId} (revision ${event.revision})`;
     case "resource.read":
       return `read ${event.resourceId} on ${event.instanceId}`;
     case "action.preparing":

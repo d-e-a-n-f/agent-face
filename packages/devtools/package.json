@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Embeddable AgentFace development panel",
   "license": "MIT",
-  "private": true,
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -44,5 +43,16 @@
   },
   "peerDependencies": {
     "react": "^19"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/devtools"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -7,6 +7,7 @@ import type {
   AgentInputSchema,
   AgentPrecondition,
   AgentSensitivity,
+  JsonValue,
 } from "@agentface/core";
 import { defineAgentAction, isAgentFaceError } from "@agentface/core";
 import { useEffect, useRef } from "react";
@@ -17,7 +18,7 @@ import { useAgentSurface } from "./surface.js";
 /** Options for {@link useAgentAction}. */
 export interface UseAgentActionOptions<
   TInput = Record<string, never>,
-  TResult = unknown,
+  TResult extends JsonValue = JsonValue,
   TPreview extends AgentActionPreview = AgentActionPreview,
 > {
   readonly id: string;
@@ -70,7 +71,7 @@ export interface UseAgentActionOptions<
  */
 export function useAgentAction<
   TInput = Record<string, never>,
-  TResult = unknown,
+  TResult extends JsonValue = JsonValue,
   TPreview extends AgentActionPreview = AgentActionPreview,
 >(options: UseAgentActionOptions<TInput, TResult, TPreview>): void {
   const runtime = useAgentRuntime();

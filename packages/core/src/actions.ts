@@ -92,7 +92,9 @@ export type AgentActionResult<TResult = JsonValue> =
  * serialised; only the metadata travels.
  *
  * @typeParam TInput - the validated input type, carried by `input`.
- * @typeParam TResult - what `execute` resolves to.
+ * @typeParam TResult - what `execute` resolves to. Constrained to
+ * {@link JsonValue}: results cross the runtime boundary to agents, so they
+ * must be JSON-serialisable. Serialise domain objects inside `execute`.
  * @typeParam TPreview - the preview shape, when `preview` is provided.
  *
  * @example
@@ -109,7 +111,7 @@ export type AgentActionResult<TResult = JsonValue> =
  */
 export interface AgentActionDefinition<
   TInput = Record<string, never>,
-  TResult = unknown,
+  TResult extends JsonValue = JsonValue,
   TPreview extends AgentActionPreview = AgentActionPreview,
 > {
   readonly id: AgentActionId;

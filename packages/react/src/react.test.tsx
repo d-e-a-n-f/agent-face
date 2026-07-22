@@ -243,7 +243,7 @@ describe("@agentface/react", () => {
       });
     });
 
-    it("entity changes update the mounted instance without remounting", async () => {
+    it("entity identity changes remount the surface as a fresh instance", async () => {
       function Harness({ entityId }: { entityId: string }): React.JSX.Element {
         return (
           <AgentFaceProvider runtime={runtime}>
@@ -276,8 +276,82 @@ describe("@agentface/react", () => {
         const surfaces = await mountedSurfaces(runtime);
         expect(surfaces).toHaveLength(1);
         expect(surfaces[0]?.instance.entity?.id).toBe("c2");
-        expect(surfaces[0]?.instance.instanceId).toBe(firstInstanceId);
+        // A different entity is a different surface instance — never the
+        // same registration rebound in place.
+        expect(surfaces[0]?.instance.instanceId).not.toBe(firstInstanceId);
       });
+    });
+
+    it("a preparation for entity A can never execute after rebinding to entity B", async () => {
+      const operated: string[] = [];
+      function Harness({ entityId }: { entityId: string }): React.JSX.Element {
+        return (
+          <AgentFaceProvider runtime={runtime}>
+            <AgentSurface
+              face={counterFace}
+              entity={{ type: "invoice", id: entityId }}
+            >
+              <ArchiveButton entityId={entityId} />
+            </AgentSurface>
+          </AgentFaceProvider>
+        );
+      }
+      function ArchiveButton({
+        entityId,
+      }: {
+        entityId: string;
+      }): React.JSX.Element {
+        useAgentAction({
+          id: "archive",
+          name: "Archive",
+          description: "Archive this invoice",
+          confirmation: "always",
+          execute: () => {
+            // Latest-render closure: after rerender this targets entity B.
+            operated.push(entityId);
+            return { archived: entityId };
+          },
+        });
+        return <span>{entityId}</span>;
+      }
+
+      const view = render(
+        <StrictMode>
+          <Harness entityId="inv_A" />
+        </StrictMode>,
+      );
+      let instanceId = "";
+      await waitFor(async () => {
+        const surfaces = await mountedSurfaces(runtime);
+        expect(surfaces).toHaveLength(1);
+        instanceId = surfaces[0]?.instance.instanceId ?? "";
+        expect(surfaces[0]?.actions).toHaveLength(1);
+      });
+      const prepared = await runtime.prepareAction({
+        instanceId,
+        actionId: "archive",
+        input: {},
+      });
+
+      // The same mounted component rebinds to a different invoice before
+      // the user confirms.
+      view.rerender(
+        <StrictMode>
+          <Harness entityId="inv_B" />
+        </StrictMode>,
+      );
+      await waitFor(async () => {
+        const surfaces = await mountedSurfaces(runtime);
+        expect(surfaces[0]?.instance.entity?.id).toBe("inv_B");
+      });
+
+      await expect(
+        runtime.confirmAction({ preparationId: prepared.preparationId }),
+      ).rejects.toMatchObject({ code: "ACTION_NOT_FOUND" });
+      await expect(
+        runtime.executeAction({ preparationId: prepared.preparationId }),
+      ).rejects.toMatchObject({ code: "ACTION_NOT_FOUND" });
+      expect(operated).toEqual([]);
     });
   });
 

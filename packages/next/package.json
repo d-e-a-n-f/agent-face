@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Next.js integration for AgentFace: the assistant model endpoint as a drop-in route handler",
   "license": "MIT",
-  "private": true,
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -59,5 +58,16 @@
     "react": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/next"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

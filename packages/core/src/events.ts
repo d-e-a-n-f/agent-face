@@ -27,6 +27,18 @@ export type AgentRuntimeEvent =
       readonly faceId: AgentFaceId;
     }
   | {
+      /**
+       * The surface's entity identity changed in place. Every outstanding
+       * preparation for the surface was invalidated and its revision bumped
+       * — a confirmation captured for the old entity can never execute
+       * against the new one.
+       */
+      readonly type: "surface.entity-changed";
+      readonly instanceId: AgentSurfaceInstanceId;
+      readonly faceId: AgentFaceId;
+      readonly revision: number;
+    }
+  | {
       readonly type: "resource.read";
       readonly instanceId: AgentSurfaceInstanceId;
       readonly resourceId: AgentResourceId;

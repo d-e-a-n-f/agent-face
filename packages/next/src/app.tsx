@@ -9,7 +9,7 @@ import { AgentFaceDevTools } from "@agentface/devtools";
 import type { AgentPolicyEngine, AgentRuntime } from "@agentface/runtime";
 import { createAgentRuntime } from "@agentface/runtime";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AgentFaceNavigationProps } from "./navigation.js";
 import { AgentFaceNavigation } from "./navigation.js";
 
@@ -73,12 +73,23 @@ export function AgentFaceApp(props: AgentFaceAppProps): ReactNode {
     devtools = "auto",
   } = props;
 
+  // The runtime is created once, but principals resolve per operation from
+  // the latest props — login, logout, or agent changes apply immediately to
+  // policy evaluation (and invalidate outstanding preparations).
+  const principalsRef = useRef({
+    ...(user !== undefined ? { user } : {}),
+    ...(agent !== undefined ? { agent } : {}),
+  });
+  principalsRef.current = {
+    ...(user !== undefined ? { user } : {}),
+    ...(agent !== undefined ? { agent } : {}),
+  };
   const [runtime] = useState<AgentRuntime>(
     () =>
       props.runtime ??
       createAgentRuntime({
         ...(props.policy !== undefined ? { policy: props.policy } : {}),
-        ...(user !== undefined ? { principals: { user } } : {}),
+        principals: () => principalsRef.current,
       }),
   );
 

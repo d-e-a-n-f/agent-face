@@ -66,3 +66,31 @@ export const { POST } = createAgentFaceRouteHandler({
 
 Writing another provider is implementing one method:
 `complete(request) → Promise<response>`.
+
+## Securing the endpoint in production
+
+:::warning
+The endpoint is a **model proxy**: anyone who can POST to it consumes your
+model provider account. In production you MUST authenticate it and should
+rate-limit it.
+:::
+
+```ts title="app/api/agentface/route.ts"
+export const { POST } = createAgentFaceRouteHandler({
+  adapter,
+  // Reject unauthenticated requests before anything is parsed:
+  authorize: async (request) =>
+    (await isSignedIn(request)) ? null : new Response(null, { status: 401 }),
+  // Per-user quotas / throttles (return a 429 Response to reject):
+  rateLimit: (request) => checkQuota(request),
+  // Cross-origin browsers are rejected unless listed:
+  allowedOrigins: ["https://app.example.com"],
+  // 1 MiB default; enforced on actual bytes, not the Content-Length header:
+  maxBodyBytes: 1_048_576,
+  // Keep provider/config details out of client-visible 5xx bodies:
+  redactErrors: true,
+});
+```
+
+The demo playground runs without `authorize` because it is a local
+development app — do not copy that into a deployment.
