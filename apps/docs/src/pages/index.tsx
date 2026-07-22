@@ -9,10 +9,10 @@ import styles from "./index.module.css";
 function Hero() {
   const { siteConfig } = useDocusaurusContext();
   return (
-    <header className={styles.heroBanner}>
+    <header className={`hero--primary ${styles.heroBanner}`}>
       <div className="container">
         <Heading as="h1" className="hero__title">
-          {siteConfig.title}
+          <span className="agentface-gradient-text">{siteConfig.title}</span>
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>

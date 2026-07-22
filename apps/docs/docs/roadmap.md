@@ -7,25 +7,33 @@ title: Roadmap
 
 Where this goes next, in rough order of intent. Nothing here is scheduled.
 
-**MCP bridge** — expose a running app's surfaces as an MCP server, so any MCP
-client (Claude Desktop, Claude Code, agent browsers) can operate the live
-page through typed, policy-gated actions. The contracts were kept
-serialisable from day one for exactly this.
+**Deterministic agent evals** — `defineAgentScenario` (instruction →
+expected reads → expected preparations → expected confirmations → final
+state), run in CI without a model against the deterministic runtime; the
+same scenarios later replay against real models as scored eval suites.
 
-**Agent evals** — record scenarios (instruction → expected action sequence →
-expected confirmations) and replay them against real models as scored eval
-suites. CI stays deterministic; evals measure the probabilistic layer.
+**More `useAgentForm`-style wrappers** — `useAgentQuery`/`useAgentMutation`
+(React Query) and `useAgentTable` (TanStack Table): one-line agent
+capability over the libraries apps already use.
 
-**Plans & undo** — prepare several actions as one reviewable changeset with a
-single approval; optional compensating closures make agent mistakes
-reversible, justifying more autonomy for low-risk operations.
+**Plans & undo** — prepare several actions as one reviewable changeset with
+per-step previews and a single approval; optional compensating closures
+make agent mistakes reversible, justifying more autonomy for low-risk
+operations.
 
-**Approval routing & audit export** — route approvals to a named approver's
-inbox (bound to *their* identity), and stream the trace — action + preview +
-confirmation evidence — to OTLP/webhooks.
+**Events** — domain events as proactive triggers: suggested next actions,
+notifications, recommendation wake-ups. Events start evaluation; policy
+still gates every action.
 
-**Also on the list** — domain events as proactive triggers; streaming
-assistant responses; server-side web tools for the model endpoint; more
-`useAgentForm`-style wrappers (tables, queries); Vue/Svelte bindings;
-NestJS/Express endpoint wrappers; Standard Schema inputs (drop `fromZod`);
-markdown-sourced and semantically-searched knowledge.
+**OpenTelemetry export** — stream the trace (actions, previews, policy
+decisions, confirmation evidence, model calls) to OTLP.
+
+**Approval routing** — route approvals to a named approver's inbox (bound
+to *their* identity): four-eyes flows, expiry, email/Slack approval links.
+Requires the server session bridge, which also unlocks server-driven
+agent frameworks operating live sessions.
+
+**Also on the list** — streaming assistant responses; server-side web
+tools for the model endpoint; Vue/Svelte bindings; NestJS/Express endpoint
+wrappers; Standard Schema inputs (drop `fromZod`); markdown-sourced and
+semantically-searched knowledge.

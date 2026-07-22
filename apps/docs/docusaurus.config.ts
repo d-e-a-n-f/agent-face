@@ -3,16 +3,16 @@ import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 
 const config: Config = {
-  title: "AgentFace",
+  title: "agentface",
   tagline:
     "The agent interface layer for software — typed, policy-checked surfaces AI assistants can operate, with humans confirming what matters.",
   favicon: "img/favicon.ico",
 
   future: { v4: true },
 
-  // GitHub Pages (project site).
-  url: "https://d-e-a-n-f.github.io",
-  baseUrl: "/agent-face/",
+  // Canonical domain (GitHub Pages deployment + custom domain via CNAME).
+  url: "https://agentface.dev",
+  baseUrl: "/",
   organizationName: "d-e-a-n-f",
   projectName: "agent-face",
   trailingSlash: false,
@@ -38,8 +38,13 @@ const config: Config = {
   ],
 
   themeConfig: {
+    image: "img/agentface-og-1200x630.png",
     navbar: {
-      title: "AgentFace",
+      logo: {
+        alt: "agentface",
+        src: "img/agentface-lockup-horizontal-dark.svg",
+        srcDark: "img/agentface-lockup-horizontal-light.svg",
+      },
       items: [
         {
           type: "docSidebar",
@@ -76,7 +81,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} AgentFace.`,
+      copyright: `Copyright © ${new Date().getFullYear()} agentface.`,
     },
     prism: {
       theme: prismThemes.github,

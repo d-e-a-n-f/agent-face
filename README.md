@@ -1,4 +1,9 @@
-# AgentFace
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/docs/static/img/agentface-lockup-horizontal-light.svg">
+    <img src="apps/docs/static/img/agentface-lockup-horizontal-dark.svg" alt="agentface" width="360">
+  </picture>
+</p>
 
 **The agent interface layer for software.** AgentFace gives every page,
 feature, and workflow in your app a typed, policy-checked interface that AI
@@ -11,8 +16,13 @@ intent** (`invoice.send`, `product.publish` — never `clickButton`) with typed
 inputs, preconditions, previews, and confirmation rules, and every invocation
 flows through one enforced, auditable lifecycle your application controls.
 
-📖 **Documentation:** [d-e-a-n-f.github.io/agent-face](https://d-e-a-n-f.github.io/agent-face/)
+📖 **Documentation:** [agentface.dev](https://agentface.dev)
 (source in [`apps/docs`](apps/docs); deployed by GitHub Pages).
+
+```bash
+# In an existing Next.js app:
+pnpm dlx @agentface/cli init
+```
 
 ## Sixty-second tour
 
@@ -60,7 +70,7 @@ A working multi-page mini-app — clients, onboarding, invoicing — with
 suggested prompts on the dashboard. Without AWS credentials everything works
 except the live model: the DevTools panel operates every capability by hand.
 See the
-[demo walkthrough](https://d-e-a-n-f.github.io/agent-face/docs/playground).
+[demo walkthrough](https://agentface.dev/docs/playground).
 
 ## Packages
 
@@ -75,10 +85,10 @@ See the
 | `@agentface/next` | Route handler for the model endpoint (+ `/navigation`, `/app` umbrella) |
 | `@agentface/devtools` | Embeddable panel: inspect and operate everything without a model |
 | `@agentface/testing` | Deterministic test runtime (+ `/react` helpers) — no LLM in tests, ever |
+| `@agentface/cli` | `agentface init` / `doctor` / `generate-manifest` |
 
-Dependency graph is strictly acyclic: `core → policy → runtime → {react,
-testing, devtools, assistant} → next`. Not yet published to npm — consumed as
-a pnpm workspace today.
+All published to npm at 0.1.0. Dependency graph is strictly acyclic:
+`core → policy → runtime → {react, testing, devtools, assistant} → next`.
 
 ## Using a coding agent?
 
@@ -105,14 +115,15 @@ pnpm --filter docs dev       # docs site on :3100
 - Browser-local, in-memory runtime by design — no server-side or
   cross-application execution yet; contracts are serialisable to enable that
   later.
-- One real model adapter (Claude via AWS Bedrock); the adapter contract is
-  neutral and a mock ships for tests.
+- Model access via `@agentface/ai-sdk` (any Vercel AI SDK provider) or the
+  direct Bedrock adapter; a deterministic mock ships for tests.
 - Approvals are confirmed by the current user; routing to a distinct approver
   is roadmap.
-- Packages are unpublished; APIs may still shift before 0.1.0.
+- 0.x: APIs may still shift between minor versions.
 
 ## Roadmap
 
-MCP bridge (expose a live app as an MCP server), agent evals, batch
-plans + undo, approval routing + audit export, and more — see the
-[roadmap](https://d-e-a-n-f.github.io/agent-face/docs/roadmap).
+Deterministic agent scenario evals, React Query and TanStack Table
+adapters, multi-action plans with batch review, undo/compensation,
+OpenTelemetry export, durable approvals — see the
+[roadmap](https://agentface.dev/docs/roadmap).

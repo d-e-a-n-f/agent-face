@@ -3,8 +3,19 @@ import Link from "next/link";
 export default function Home() {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-3xl font-bold">AgentFace Playground</h1>
-      <p className="mt-2 text-neutral-600 dark:text-neutral-400">
+      {/* Brand lockups: dark-on-light and light-on-dark variants. */}
+      <img
+        src="/brand/agentface-lockup-horizontal-dark.svg"
+        alt="agentface"
+        className="h-10 dark:hidden"
+      />
+      <img
+        src="/brand/agentface-lockup-horizontal-light.svg"
+        alt="agentface"
+        className="hidden h-10 dark:block"
+      />
+      <p className="mt-1 text-sm font-medium text-neutral-500">Playground</p>
+      <p className="mt-4 text-neutral-600 dark:text-neutral-400">
         AgentFace gives every screen a typed, policy-checked interface an AI
         assistant can operate — with the human confirming anything
         consequential.

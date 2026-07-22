@@ -14,9 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AgentFace Playground",
+  title: "agentface playground",
   description:
     "Integration and acceptance-test application for the AgentFace SDK",
+  metadataBase: new URL("https://agentface.dev"),
+  openGraph: {
+    title: "agentface playground",
+    description:
+      "The agent interface layer for software — try it against a working mini-app.",
+    images: ["/brand/agentface-mark-gradient.svg"],
+  },
 };
 
 export default function RootLayout({

@@ -50,3 +50,6 @@ AGENTS.md
 
 # Generated manifest artefacts
 .agentface/
+
+# Brand source pack (Dean deletes after extraction)
+agentface-brand-pack/

@@ -170,18 +170,19 @@ export interface AgentFaceAssistantProps extends UseAgentFaceAssistantOptions {
 
 const styles = {
   launcher: {
-    fontFamily: "ui-sans-serif, system-ui, sans-serif",
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
     fontSize: 13,
-    border: "1px solid #7b6ff0",
+    border: 0,
     borderRadius: 999,
-    background: "#7b6ff0",
+    // The brand gradient marks live agent capability (see brand guide).
+    background: "linear-gradient(135deg, #7C3AED 0%, #4F46E5 55%, #22D3EE 100%)",
     color: "#fff",
-    padding: "8px 16px",
+    padding: "9px 17px",
     cursor: "pointer",
     boxShadow: "0 4px 14px rgba(30, 20, 80, 0.25)",
   },
   panel: {
-    fontFamily: "ui-sans-serif, system-ui, sans-serif",
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
     fontSize: 13,
     width: 400,
     maxWidth: "calc(100vw - 32px)",
@@ -223,7 +224,7 @@ const styles = {
   userBubble: {
     alignSelf: "flex-end",
     maxWidth: "85%",
-    background: "#7b6ff0",
+    background: "#4F46E5",
     color: "#fff",
     borderRadius: "14px 14px 4px 14px",
     padding: "7px 12px",
@@ -289,10 +290,10 @@ const styles = {
     padding: "0 12px",
   },
   chip: {
-    border: "1px solid #b5a8f5",
+    border: "1px solid #C7D2FE",
     borderRadius: 999,
-    background: "#f3f0ff",
-    color: "#4b3fb5",
+    background: "#EEF2FF",
+    color: "#4338CA",
     padding: "2px 10px",
     cursor: "pointer",
     font: "inherit",
@@ -307,9 +308,9 @@ const styles = {
     font: "inherit",
   },
   sendButton: {
-    border: "1px solid #7b6ff0",
+    border: "1px solid #4F46E5",
     borderRadius: 8,
-    background: "#7b6ff0",
+    background: "#4F46E5",
     color: "#fff",
     padding: "6px 14px",
     cursor: "pointer",
