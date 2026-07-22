@@ -1,6 +1,6 @@
 # Product publication — the reference scenario
 
-`/examples/product-publication` implements MISSION §18's route 5: the
+`/portal/products` implements MISSION §18's route 5: the
 long-term product vision exercised end to end, showing what AgentFace does
 that DOM automation and generic backend tools cannot.
 
@@ -42,14 +42,14 @@ per-workspace error surfaced and the Apollo publication left standing.
 - **Journeys and cross-page context**: the navigation surface exposes where
   the user is and has been; the assistant can move between screens and use
   what it read on one screen to act on another (see the customer-table →
-  invoice demo in `e2e/product-publication.spec.ts`).
+  invoice demo in `e2e/portal-products.spec.ts`).
 
 ## Where the truth lives
 
 - Domain rules: `apps/web/src/lib/product-publication-domain.ts` (pure,
   tested in `product-publication-domain.test.ts` — 9 tests).
 - Surfaces/UI: `apps/web/src/features/product-publication.tsx`.
-- Browser proof: `apps/web/e2e/product-publication.spec.ts` (reference
+- Browser proof: `apps/web/e2e/portal-products.spec.ts` (reference
   scenario incl. navigation and both confirmation gates; declined approval
   stops the chain; cross-page context fill).
 

@@ -1,159 +1,113 @@
-# Turborepo starter
+# AgentFace
 
-This Turborepo starter is maintained by the Turborepo core team.
+**The agent interface layer for software.** AgentFace gives every page,
+feature, and workflow in your app a typed, policy-checked interface that AI
+assistants can understand and operate — with the human confirming anything
+consequential.
 
-## Using this example
+Agents today operate software through brittle DOM automation or context-blind
+backend APIs. AgentFace adds the missing layer: features expose **business
+intent** (`invoice.send`, `product.publish` — never `clickButton`) with typed
+inputs, preconditions, previews, and confirmation rules, and every invocation
+flows through one enforced, auditable lifecycle your application controls.
 
-Run the following command:
+📖 **Documentation:** [d-e-a-n-f.github.io/agent-face](https://d-e-a-n-f.github.io/agent-face/)
+(source in [`apps/docs`](apps/docs); deployed by GitHub Pages).
 
-```sh
-npx create-turbo@latest
+## Sixty-second tour
+
+```tsx
+// 1. One component wires everything (runtime, assistant, navigation, DevTools):
+<AgentFaceApp application={{ id: "acme", name: "Acme" }} routes={ROUTES}>
+  {children}
+</AgentFaceApp>
+
+// 2. Features declare their agent interface inline:
+<AgentSurface id="billing.invoice" description="View, edit and send an invoice">
+  <InvoiceEditor />
+</AgentSurface>
+
+// 3. …and expose typed capabilities:
+useAgentResource({ id: "summary", description: "Totals and status", getValue: () => summary });
+useAgentAction({
+  id: "send",
+  description: "Send the invoice to the customer",
+  confirmation: "always",
+  preview: () => ({ summary: `Send ${invoice.number} to ${invoice.email}` }),
+  execute: () => sendInvoice(invoice.id),
+});
+
+// A react-hook-form form becomes agent-fillable in one call:
+useAgentForm({ form, name: "Onboarding", description: "the onboarding form" });
 ```
 
-## What's inside?
+The shipped assistant widget then reads the screen, fills real forms, follows
+your help docs, suggests next steps as live buttons, moves between screens —
+and pauses on a confirmation card (exact input + preview + state revision)
+before anything that matters. If state changes underneath a prepared action,
+it goes stale instead of executing.
 
-This Turborepo includes the following packages/apps:
+## Try the demo (the Portal)
 
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+```bash
+pnpm install
+pnpm build
+AWS_REGION=us-east-1 pnpm dev   # AWS creds → Claude via Bedrock
+# open http://localhost:3000/portal
 ```
 
-Without global `turbo`, use your package manager:
+A working multi-page mini-app — clients, onboarding, invoicing, product
+publication — with suggested prompts on the dashboard. Without AWS
+credentials everything works except the live model: the DevTools panel
+operates every capability by hand. See the
+[demo walkthrough](https://d-e-a-n-f.github.io/agent-face/docs/playground).
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+## Packages
+
+| Package | What it is |
+| --- | --- |
+| `@agentface/core` | Contracts: faces, resources, actions, schemas (+ `/zod`), typed errors, trace events |
+| `@agentface/policy` | Composable allow / confirm / deny engine with sensitivity ceilings |
+| `@agentface/runtime` | In-memory registry + the enforced action lifecycle, revisions, traces |
+| `@agentface/react` | Provider, `AgentSurface`, hooks, knowledge, recommendations (+ `/hook-form`) |
+| `@agentface/assistant` | Provider-neutral model adapters + the assistant loop (+ `/react` widget, `/bedrock`) |
+| `@agentface/next` | Route handler for the model endpoint (+ `/navigation`, `/app` umbrella) |
+| `@agentface/devtools` | Embeddable panel: inspect and operate everything without a model |
+| `@agentface/testing` | Deterministic test runtime (+ `/react` helpers) — no LLM in tests, ever |
+
+Dependency graph is strictly acyclic: `core → policy → runtime → {react,
+testing, devtools, assistant} → next`. Not yet published to npm — consumed as
+a pnpm workspace today.
+
+## Development
+
+```bash
+pnpm install
+pnpm build          # all packages + apps
+pnpm test           # unit tests (130+; deterministic, no model calls)
+pnpm check-types    # strict TS incl. noUncheckedIndexedAccess, exactOptionalPropertyTypes
+pnpm lint
+pnpm --filter web test:e2e   # Playwright: 11 browser specs incl. full agent flows
+pnpm --filter docs dev       # docs site on :3100
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Architecture decisions are recorded in [`docs/decisions`](docs/decisions)
+(ADR 0001–0009). The build plan and MVP evidence live in
+[`docs/MVP-CHECKLIST.md`](docs/MVP-CHECKLIST.md).
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Current limitations
 
-```sh
-turbo build --filter=docs
-```
+- Browser-local, in-memory runtime by design (ADR 0001) — no server-side or
+  cross-application execution yet; contracts are serialisable to enable that
+  later.
+- One real model adapter (Claude via AWS Bedrock); the adapter contract is
+  neutral and a mock ships for tests.
+- Approvals are confirmed by the current user; routing to a distinct approver
+  is roadmap.
+- Packages are unpublished; APIs may still shift before 0.1.0.
 
-Without global `turbo`:
+## Roadmap
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+MCP bridge (expose a live app as an MCP server), agent evals, batch
+plans + undo, approval routing + audit export, and more — see the
+[roadmap](https://d-e-a-n-f.github.io/agent-face/docs/roadmap).

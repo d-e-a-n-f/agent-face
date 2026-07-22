@@ -12,6 +12,7 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "prettier": "^3.7.4",
     "turbo": "^2.10.5",
     "typescript": "5.9.2"

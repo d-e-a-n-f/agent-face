@@ -610,6 +610,16 @@ function ProductPublicationFeature(): React.JSX.Element {
       "The product share classes inherit from: currency band, minimum subscription, default fee schedule",
     getValue: () => getDomain().product,
   });
+  useAgentAction({
+    id: "decommission-product",
+    description:
+      "Decommission the product entirely — a restricted operation this workspace's policy denies to agents (demonstrates POLICY_DENIED).",
+    sensitivity: "restricted",
+    execute: () => {
+      throw new Error("Unreachable: policy denies restricted executions");
+    },
+  });
+
   useAgentResource({
     id: "fee-schedules",
     name: "Fee schedules",
