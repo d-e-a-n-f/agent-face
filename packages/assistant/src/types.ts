@@ -57,11 +57,19 @@ export type AgentModelStopReason =
   | "refusal"
   | "other";
 
+/** Token counts for one completion, as reported by the provider. */
+export interface AgentModelUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+}
+
 /** One completion from a model provider. */
 export interface AgentModelResponse {
   readonly text?: string;
   readonly toolCalls: readonly AgentModelToolCall[];
   readonly stopReason: AgentModelStopReason;
+  /** Token usage, when the provider reports it. */
+  readonly usage?: AgentModelUsage;
 }
 
 /**
@@ -71,4 +79,14 @@ export interface AgentModelResponse {
  */
 export interface AgentModelAdapter {
   complete(request: AgentModelRequest): Promise<AgentModelResponse>;
+  /**
+   * Streaming variant: emits text deltas as they arrive and resolves with
+   * the same final response as `complete` (tool calls and usage arrive with
+   * the final response). Optional — the assistant loop uses it when
+   * present and falls back to `complete` otherwise.
+   */
+  completeStream?(
+    request: AgentModelRequest,
+    onTextDelta: (delta: string) => void,
+  ): Promise<AgentModelResponse>;
 }

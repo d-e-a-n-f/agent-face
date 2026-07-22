@@ -6,7 +6,7 @@ import {
 } from "@agentface/core";
 import type { AgentRuntime } from "@agentface/runtime";
 import { createAgentRuntime } from "@agentface/runtime";
-import { MockLanguageModelV4 } from "ai/test";
+import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
 import { describe, expect, it } from "vitest";
 import { createAISDKAdapter } from "./adapter.js";
 import { createAISDKTools } from "./tools.js";
@@ -101,6 +101,7 @@ describe("createAISDKAdapter", () => {
       text: "All done.",
       toolCalls: [],
       stopReason: "end-turn",
+      usage: { inputTokens: 1, outputTokens: 1 },
     });
   });
 
@@ -110,6 +111,41 @@ describe("createAISDKAdapter", () => {
     });
     const response = await createAISDKAdapter({ model }).complete(baseRequest);
     expect(response.stopReason).toBe("refusal");
+  });
+
+  it("completeStream emits deltas and resolves the final response with usage", async () => {
+    const usage = {
+      inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrite: 0 },
+      outputTokens: { total: 7, text: 7, reasoning: 0 },
+      raw: undefined,
+    } as unknown as LanguageModelV4GenerateResult["usage"];
+    const model = new MockLanguageModelV4({
+      doStream: {
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "stream-start" as const, warnings: [] },
+            { type: "text-start" as const, id: "t1" },
+            { type: "text-delta" as const, id: "t1", delta: "Hel" },
+            { type: "text-delta" as const, id: "t1", delta: "lo" },
+            { type: "text-end" as const, id: "t1" },
+            {
+              type: "finish" as const,
+              usage,
+              finishReason: { unified: "stop" as const, raw: undefined },
+            },
+          ],
+        }),
+      },
+    });
+    const adapter = createAISDKAdapter({ model });
+    const deltas: string[] = [];
+    const response = await adapter.completeStream?.(baseRequest, (delta) =>
+      deltas.push(delta),
+    );
+    expect(deltas.join("")).toBe("Hello");
+    expect(response?.text).toBe("Hello");
+    expect(response?.stopReason).toBe("end-turn");
+    expect(response?.usage).toEqual({ inputTokens: 100, outputTokens: 7 });
   });
 
   it("splits our user-role tool results into tool-role model messages", async () => {

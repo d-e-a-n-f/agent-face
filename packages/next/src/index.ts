@@ -148,6 +148,35 @@ export function createAgentFaceRouteHandler(
         );
       }
 
+      const wantsStream =
+        typeof body === "object" &&
+        body !== null &&
+        (body as { stream?: unknown }).stream === true;
+      if (wantsStream) {
+        const result = await endpoint.handleStream(body);
+        if (result.kind === "stream") {
+          return new Response(
+            options.redactErrors === true
+              ? result.stream.pipeThrough(redactingTransform())
+              : result.stream,
+            {
+              headers: {
+                "content-type": "text/event-stream",
+                "cache-control": "no-cache, no-transform",
+                connection: "keep-alive",
+              },
+            },
+          );
+        }
+        if (options.redactErrors === true && result.status >= 500) {
+          return Response.json(
+            { error: "The model endpoint failed" },
+            { status: result.status },
+          );
+        }
+        return Response.json(result.body, { status: result.status });
+      }
+
       const result = await endpoint.handle(body);
       if (options.redactErrors === true && result.status >= 500) {
         return Response.json(
@@ -158,4 +187,39 @@ export function createAgentFaceRouteHandler(
       return Response.json(result.body, { status: result.status });
     },
   };
+}
+
+/**
+ * Rewrites in-stream error frames to a generic message so provider/config
+ * details never reach clients (the SSE counterpart of `redactErrors`).
+ */
+function redactingTransform(): TransformStream<Uint8Array, Uint8Array> {
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buffer = "";
+  const flushFrames = (
+    controller: TransformStreamDefaultController<Uint8Array>,
+  ): void => {
+    let boundary;
+    while ((boundary = buffer.indexOf("\n\n")) >= 0) {
+      const rawFrame = buffer.slice(0, boundary + 2);
+      buffer = buffer.slice(boundary + 2);
+      const redacted = rawFrame.includes('"type":"error"')
+        ? `data: ${JSON.stringify({ type: "error", error: "The model endpoint failed" })}\n\n`
+        : rawFrame;
+      controller.enqueue(encoder.encode(redacted));
+    }
+  };
+  return new TransformStream({
+    transform(chunk, controller) {
+      buffer += decoder.decode(chunk, { stream: true });
+      flushFrames(controller);
+    },
+    flush(controller) {
+      flushFrames(controller);
+      if (buffer.length > 0) {
+        controller.enqueue(encoder.encode(buffer));
+      }
+    },
+  });
 }

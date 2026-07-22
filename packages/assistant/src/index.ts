@@ -17,6 +17,7 @@
 export { createAssistant, DEFAULT_ASSISTANT_SYSTEM_PROMPT } from "./assistant.js";
 export type {
   AgentFaceAssistant,
+  AssistantUsage,
   ConfirmationDecision,
   CreateAssistantOptions,
 } from "./assistant.js";
@@ -34,10 +35,12 @@ export type {
   ModelAdapterSource,
   ModelEndpoint,
   ModelEndpointResult,
+  ModelEndpointStreamResult,
 } from "./http.js";
 
 export type {
   AgentModelAdapter,
+  AgentModelUsage,
   AgentModelRequest,
   AgentModelResponse,
   AgentModelStopReason,

@@ -133,6 +133,102 @@ export function createBedrockAdapter(
         ...(text.length > 0 ? { text } : {}),
         toolCalls,
         stopReason: toStopReason(response.stop_reason),
+        usage: {
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+        },
+      };
+    },
+
+    async completeStream(request, onTextDelta) {
+      const stream = await client.messages.create({
+        model,
+        max_tokens: maxTokens,
+        stream: true,
+        thinking: { type: "adaptive" },
+        system: request.system,
+        messages: request.messages.map((message) => ({
+          role: message.role,
+          content: toBedrockContent(message.content),
+        })) as never,
+        tools: request.tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.inputSchema,
+        })) as never,
+      });
+
+      let text = "";
+      let stopReason: string | null = null;
+      let inputTokens = 0;
+      let outputTokens = 0;
+      // Tool inputs stream as partial JSON per content block; assemble by
+      // block index and parse when the block closes.
+      const openToolBlocks = new Map<
+        number,
+        { id: string; name: string; json: string }
+      >();
+      const toolCalls: {
+        toolCallId: string;
+        toolName: string;
+        input: JsonValue;
+      }[] = [];
+
+      for await (const event of stream) {
+        switch (event.type) {
+          case "message_start":
+            inputTokens = event.message.usage.input_tokens;
+            outputTokens = event.message.usage.output_tokens;
+            break;
+          case "content_block_start":
+            if (event.content_block.type === "tool_use") {
+              openToolBlocks.set(event.index, {
+                id: event.content_block.id,
+                name: event.content_block.name,
+                json: "",
+              });
+            }
+            break;
+          case "content_block_delta":
+            if (event.delta.type === "text_delta") {
+              text += event.delta.text;
+              onTextDelta(event.delta.text);
+            } else if (event.delta.type === "input_json_delta") {
+              const block = openToolBlocks.get(event.index);
+              if (block !== undefined) {
+                block.json += event.delta.partial_json;
+              }
+            }
+            break;
+          case "content_block_stop": {
+            const block = openToolBlocks.get(event.index);
+            if (block !== undefined) {
+              openToolBlocks.delete(event.index);
+              toolCalls.push({
+                toolCallId: block.id,
+                toolName: block.name,
+                // Validated downstream by the action's own input schema.
+                input: (block.json.length > 0
+                  ? JSON.parse(block.json)
+                  : {}) as JsonValue,
+              });
+            }
+            break;
+          }
+          case "message_delta":
+            stopReason = event.delta.stop_reason ?? stopReason;
+            outputTokens = event.usage.output_tokens;
+            break;
+          default:
+            break;
+        }
+      }
+
+      return {
+        ...(text.length > 0 ? { text } : {}),
+        toolCalls,
+        stopReason: toStopReason(stopReason),
+        usage: { inputTokens, outputTokens },
       };
     },
   };

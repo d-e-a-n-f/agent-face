@@ -45,6 +45,14 @@ export interface CreateAssistantOptions {
   readonly onUpdate?: () => void;
 }
 
+/** Cumulative token usage across the conversation. */
+export interface AssistantUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  /** Model round-trips that reported usage. */
+  readonly requests: number;
+}
+
 /** A conversational assistant bound to one AgentFace runtime. */
 export interface AgentFaceAssistant {
   /**
@@ -60,6 +68,19 @@ export interface AgentFaceAssistant {
    */
   cancel(): void;
   getMessages(): readonly AssistantMessage[];
+  /**
+   * The partial assistant text of the in-flight model turn (when the
+   * adapter streams), or `null`. Updates fire `onUpdate`.
+   */
+  getStreamingText(): string | null;
+  /** Cumulative token usage, from adapters that report it. */
+  getUsage(): AssistantUsage;
+  /**
+   * Seeds a previously saved conversation (e.g. from storage). Only
+   * applies when the conversation is empty — a live conversation is never
+   * overwritten.
+   */
+  restore(messages: readonly AssistantMessage[]): void;
   reset(): void;
 }
 
@@ -261,6 +282,8 @@ export function createAssistant(
   // cancel() bumps the generation; runs started before the bump (in-flight
   // or queued) stop at their next checkpoint, while later sends run freshly.
   let generation = 0;
+  let streamingText: string | null = null;
+  let usage = { inputTokens: 0, outputTokens: 0, requests: 0 };
 
   function append(message: AssistantMessage): void {
     messages = [...messages, message];
@@ -397,11 +420,29 @@ export function createAssistant(
       const tools = buildTools(discovery.surfaces);
       const system = `${systemPrompt}\n\n## Currently mounted surfaces\n${JSON.stringify(describeSurfaces(discovery.surfaces), null, 2)}`;
 
-      const response = await adapter.complete({
-        system,
-        messages,
-        tools: tools.definitions,
-      });
+      const modelRequest = { system, messages, tools: tools.definitions };
+      let response;
+      if (adapter.completeStream !== undefined) {
+        streamingText = "";
+        try {
+          response = await adapter.completeStream(modelRequest, (delta) => {
+            streamingText = (streamingText ?? "") + delta;
+            onUpdate?.();
+          });
+        } finally {
+          streamingText = null;
+          onUpdate?.();
+        }
+      } else {
+        response = await adapter.complete(modelRequest);
+      }
+      if (response.usage !== undefined) {
+        usage = {
+          inputTokens: usage.inputTokens + response.usage.inputTokens,
+          outputTokens: usage.outputTokens + response.usage.outputTokens,
+          requests: usage.requests + 1,
+        };
+      }
       if (myGeneration !== generation) {
         break;
       }
@@ -456,8 +497,17 @@ export function createAssistant(
       generation += 1;
     },
     getMessages: () => messages,
+    getStreamingText: () => streamingText,
+    getUsage: () => usage,
+    restore: (saved) => {
+      if (messages.length === 0 && saved.length > 0) {
+        messages = [...saved];
+        onUpdate?.();
+      }
+    },
     reset: () => {
       messages = [];
+      usage = { inputTokens: 0, outputTokens: 0, requests: 0 };
       onUpdate?.();
     },
   };

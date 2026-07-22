@@ -1,18 +1,23 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
       {/* Brand lockups: dark-on-light and light-on-dark variants. */}
-      <img
+      <Image
         src="/brand/agentface-lockup-horizontal-dark.svg"
         alt="agentface"
-        className="h-10 dark:hidden"
+        width={280}
+        height={40}
+        className="h-10 w-auto dark:hidden"
       />
-      <img
+      <Image
         src="/brand/agentface-lockup-horizontal-light.svg"
         alt="agentface"
-        className="hidden h-10 dark:block"
+        width={280}
+        height={40}
+        className="hidden h-10 w-auto dark:block"
       />
       <p className="mt-1 text-sm font-medium text-neutral-500">Playground</p>
       <p className="mt-4 text-neutral-600 dark:text-neutral-400">

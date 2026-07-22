@@ -10,11 +10,12 @@ import type {
   AssistantContent,
   JSONValue,
   LanguageModel,
+  LanguageModelUsage,
   ModelMessage,
   ToolContent,
   ToolSet,
 } from "ai";
-import { dynamicTool, generateText, jsonSchema } from "ai";
+import { dynamicTool, generateText, jsonSchema, streamText } from "ai";
 
 /** Options for {@link createAISDKAdapter}. */
 export interface CreateAISDKAdapterOptions {
@@ -112,6 +113,16 @@ function toToolSet(tools: AgentModelRequest["tools"]): ToolSet {
   );
 }
 
+function toUsage(usage: LanguageModelUsage): {
+  inputTokens: number;
+  outputTokens: number;
+} {
+  return {
+    inputTokens: usage.inputTokens ?? 0,
+    outputTokens: usage.outputTokens ?? 0,
+  };
+}
+
 function toStopReason(
   finishReason: string,
   toolCallCount: number,
@@ -156,23 +167,27 @@ function toStopReason(
 export function createAISDKAdapter(
   options: CreateAISDKAdapterOptions,
 ): AgentModelAdapter {
+  function callSettings(request: AgentModelRequest) {
+    return {
+      model: options.model,
+      system: request.system,
+      messages: toModelMessages(request.messages),
+      tools: toToolSet(request.tools),
+      ...(options.maxOutputTokens !== undefined
+        ? { maxOutputTokens: options.maxOutputTokens }
+        : {}),
+      ...(options.temperature !== undefined
+        ? { temperature: options.temperature }
+        : {}),
+      ...(options.headers !== undefined
+        ? { headers: { ...options.headers } }
+        : {}),
+    };
+  }
+
   return {
     async complete(request: AgentModelRequest): Promise<AgentModelResponse> {
-      const result = await generateText({
-        model: options.model,
-        system: request.system,
-        messages: toModelMessages(request.messages),
-        tools: toToolSet(request.tools),
-        ...(options.maxOutputTokens !== undefined
-          ? { maxOutputTokens: options.maxOutputTokens }
-          : {}),
-        ...(options.temperature !== undefined
-          ? { temperature: options.temperature }
-          : {}),
-        ...(options.headers !== undefined
-          ? { headers: { ...options.headers } }
-          : {}),
-      });
+      const result = await generateText(callSettings(request));
       const toolCalls = result.toolCalls
         .filter((call) => call.invalid !== true)
         .map((call) => ({
@@ -184,6 +199,37 @@ export function createAISDKAdapter(
         ...(result.text.length > 0 ? { text: result.text } : {}),
         toolCalls,
         stopReason: toStopReason(result.finishReason, toolCalls.length),
+        usage: toUsage(result.usage),
+      };
+    },
+
+    async completeStream(
+      request: AgentModelRequest,
+      onTextDelta: (delta: string) => void,
+    ): Promise<AgentModelResponse> {
+      const result = streamText(callSettings(request));
+      let text = "";
+      for await (const delta of result.textStream) {
+        text += delta;
+        onTextDelta(delta);
+      }
+      const [rawToolCalls, finishReason, totalUsage] = await Promise.all([
+        result.toolCalls,
+        result.finishReason,
+        result.usage,
+      ]);
+      const toolCalls = rawToolCalls
+        .filter((call) => call.invalid !== true)
+        .map((call) => ({
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          input: (call.input ?? {}) as JsonValue,
+        }));
+      return {
+        ...(text.length > 0 ? { text } : {}),
+        toolCalls,
+        stopReason: toStopReason(finishReason, toolCalls.length),
+        usage: toUsage(totalUsage),
       };
     },
   };

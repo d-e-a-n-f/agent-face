@@ -181,4 +181,96 @@ describe("AgentFaceAssistant widget", () => {
       expect(screen.queryByTestId("assistant-suggestion")).toBeNull();
     });
   });
+
+  it("renders streaming text while a turn is in flight and usage after", async () => {
+    window.sessionStorage.clear();
+    const { runtime } = setupRuntime();
+    let releaseTurn: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      releaseTurn = resolve;
+    });
+    const user = userEvent.setup();
+    render(
+      <AgentFaceProvider runtime={runtime}>
+        <AgentFaceAssistant
+          defaultOpen
+          adapter={{
+            complete: async () => {
+              throw new Error("unused");
+            },
+            completeStream: async (_request, onDelta) => {
+              onDelta("Strea");
+              onDelta("ming reply");
+              await gate;
+              return {
+                text: "Streaming reply",
+                toolCalls: [],
+                stopReason: "end-turn" as const,
+                usage: { inputTokens: 1500, outputTokens: 42 },
+              };
+            },
+          }}
+        />
+      </AgentFaceProvider>,
+    );
+    await user.type(
+      screen.getByLabelText("Assistant instruction"),
+      "stream it{Enter}",
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("assistant-streaming").textContent).toBe(
+        "Streaming reply",
+      );
+    });
+    releaseTurn?.();
+    await waitFor(() => {
+      expect(screen.queryByTestId("assistant-streaming")).toBeNull();
+    });
+    // Usage renders in the header once reported: 1.5k in / 42 out.
+    expect(screen.getByTestId("assistant-usage").textContent).toContain("1.5k");
+    expect(screen.getByTestId("assistant-usage").textContent).toContain("42");
+    window.sessionStorage.clear();
+  });
+
+  it("persists the conversation and restores it on remount", async () => {
+    window.sessionStorage.clear();
+    const { runtime } = setupRuntime();
+    const adapter = {
+      complete: async () => ({
+        text: "Saved answer",
+        toolCalls: [],
+        stopReason: "end-turn" as const,
+      }),
+    };
+    const user = userEvent.setup();
+    const view = render(
+      <AgentFaceProvider runtime={runtime}>
+        <AgentFaceAssistant defaultOpen adapter={adapter} />
+      </AgentFaceProvider>,
+    );
+    await user.type(
+      screen.getByLabelText("Assistant instruction"),
+      "remember me{Enter}",
+    );
+    await screen.findByText("Saved answer");
+    view.unmount();
+
+    // A fresh mount (same tab/session) restores the thread.
+    render(
+      <AgentFaceProvider runtime={runtime}>
+        <AgentFaceAssistant defaultOpen adapter={adapter} />
+      </AgentFaceProvider>,
+    );
+    await screen.findByText("Saved answer");
+    expect(screen.getByText("remember me")).toBeTruthy();
+
+    // Clearing the conversation clears the storage too.
+    await user.click(screen.getByRole("button", { name: "Clear conversation" }));
+    await waitFor(() => {
+      expect(screen.queryByText("Saved answer")).toBeNull();
+    });
+    expect(
+      window.sessionStorage.getItem("agentface-chat:app"),
+    ).toBeNull();
+  });
 });

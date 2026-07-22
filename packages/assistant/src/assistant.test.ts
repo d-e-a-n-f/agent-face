@@ -504,4 +504,67 @@ describe("createAssistant", () => {
     await run;
     expect(completions).toBeLessThan(12);
   });
+
+  it("streams deltas via completeStream and accumulates usage", async () => {
+    const runtime = createAgentRuntime();
+    setupInvoice(runtime);
+    const seen: (string | null)[] = [];
+    const assistant: ReturnType<typeof createAssistant> = createAssistant({
+      runtime,
+      adapter: {
+        complete: async () => {
+          throw new Error("streaming adapter must use completeStream");
+        },
+        completeStream: async (_request, onDelta) => {
+          onDelta("Wor");
+          onDelta("king on it.");
+          return {
+            text: "Working on it.",
+            toolCalls: [],
+            stopReason: "end-turn" as const,
+            usage: { inputTokens: 120, outputTokens: 8 },
+          };
+        },
+      },
+      onUpdate: () => {
+        seen.push(assistant.getStreamingText());
+      },
+    });
+    await assistant.send("do the thing");
+    expect(seen).toContain("Wor");
+    expect(seen).toContain("Working on it.");
+    // Streaming text clears when the turn completes.
+    expect(assistant.getStreamingText()).toBeNull();
+    expect(assistant.getUsage()).toEqual({
+      inputTokens: 120,
+      outputTokens: 8,
+      requests: 1,
+    });
+    const finalText = assistant
+      .getMessages()
+      .at(-1)
+      ?.content.find((part) => part.type === "text");
+    expect(finalText?.type === "text" && finalText.text).toBe("Working on it.");
+  });
+
+  it("restore seeds only an empty conversation", async () => {
+    const runtime = createAgentRuntime();
+    const saved = [
+      { role: "user" as const, content: [{ type: "text" as const, text: "earlier" }] },
+      { role: "assistant" as const, content: [{ type: "text" as const, text: "reply" }] },
+    ];
+    const assistant = createAssistant({
+      runtime,
+      adapter: createMockModelAdapter([
+        () => ({ toolCalls: [], stopReason: "end-turn", text: "ok" }),
+      ]),
+    });
+    assistant.restore(saved);
+    expect(assistant.getMessages()).toEqual(saved);
+    // A live conversation is never overwritten:
+    assistant.restore([
+      { role: "user", content: [{ type: "text", text: "other" }] },
+    ]);
+    expect(assistant.getMessages()).toEqual(saved);
+  });
 });

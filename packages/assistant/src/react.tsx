@@ -4,7 +4,11 @@ import { useAgentContext, useAgentRecommendations } from "@agentface/react";
 import type { PreparedAgentAction, PrincipalContext } from "@agentface/runtime";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgentFaceAssistant as AssistantEngine, ConfirmationDecision } from "./assistant.js";
+import type {
+  AgentFaceAssistant as AssistantEngine,
+  AssistantUsage,
+  ConfirmationDecision,
+} from "./assistant.js";
 import { createAssistant } from "./assistant.js";
 import { createHttpModelAdapter } from "./http.js";
 import type { AgentModelAdapter, AssistantMessage } from "./types.js";
@@ -17,12 +21,22 @@ export interface UseAgentFaceAssistantOptions {
   readonly endpoint?: string;
   readonly systemPrompt?: string;
   readonly maxIterations?: number;
+  /**
+   * Persist the conversation across reloads: `"session"` (default —
+   * survives reload, per tab), `"local"` (survives browser restarts), or
+   * `false`. Keyed by the provider's application id.
+   */
+  readonly persist?: "session" | "local" | false;
 }
 
 /** The headless assistant state for building custom chat UIs. */
 export interface UseAgentFaceAssistantResult {
   readonly messages: readonly AssistantMessage[];
   readonly busy: boolean;
+  /** Partial assistant text of the in-flight model turn (streaming adapters), or null. */
+  readonly streamingText: string | null;
+  /** Cumulative token usage, from adapters that report it. */
+  readonly usage: AssistantUsage;
   /** The prepared action currently awaiting the user's decision, if any. */
   readonly pendingConfirmation: PreparedAgentAction | null;
   send(text: string): Promise<void>;
@@ -48,10 +62,31 @@ export function useAgentFaceAssistant(
   const runtime = context.runtime;
   const [messages, setMessages] = useState<readonly AssistantMessage[]>([]);
   const [busy, setBusy] = useState(false);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
+  const [usage, setUsage] = useState<AssistantUsage>({
+    inputTokens: 0,
+    outputTokens: 0,
+    requests: 0,
+  });
   const [pending, setPending] = useState<PreparedAgentAction | null>(null);
   const decisionRef = useRef<((decision: ConfirmationDecision) => void) | null>(
     null,
   );
+
+  // Conversation persistence: sessionStorage by default so a reload keeps
+  // the thread; opt out with persist={false} or upgrade to "local".
+  const persist = options.persist ?? "session";
+  const storageKey = `agentface-chat:${context.application?.id ?? "app"}`;
+  const storage = (): Storage | null => {
+    if (persist === false || typeof window === "undefined") {
+      return null;
+    }
+    try {
+      return persist === "local" ? window.localStorage : window.sessionStorage;
+    } catch {
+      return null;
+    }
+  };
 
   // The provider's principals flow into every runtime operation the
   // assistant performs. A ref + closure keeps them current per operation
@@ -91,10 +126,42 @@ export function useAgentFaceAssistant(
           setPending(prepared);
         }),
       onUpdate: () => {
-        setMessages(engineRef.current?.getMessages() ?? []);
+        const engine = engineRef.current;
+        if (engine === null) {
+          return;
+        }
+        const current = engine.getMessages();
+        setMessages(current);
+        setStreamingText(engine.getStreamingText());
+        setUsage(engine.getUsage());
+        try {
+          storage()?.setItem(storageKey, JSON.stringify(current));
+        } catch {
+          // Quota/serialisation problems must never break the assistant.
+        }
       },
     });
   }
+
+  // Restore a saved conversation once, after mount (SSR-safe).
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) {
+      return;
+    }
+    restoredRef.current = true;
+    try {
+      const saved = storage()?.getItem(storageKey);
+      if (saved !== null && saved !== undefined) {
+        const parsed = JSON.parse(saved) as AssistantMessage[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          engineRef.current?.restore(parsed);
+        }
+      }
+    } catch {
+      // Corrupt saved state: start fresh.
+    }
+  }, []);
 
   const settle = useCallback((decision: ConfirmationDecision): void => {
     const resolve = decisionRef.current;
@@ -135,6 +202,8 @@ export function useAgentFaceAssistant(
   return {
     messages,
     busy,
+    streamingText,
+    usage,
     pendingConfirmation: pending,
     send,
     cancel: useCallback(() => {
@@ -151,6 +220,12 @@ export function useAgentFaceAssistant(
     reset: useCallback(() => {
       engineRef.current?.reset();
       setMessages([]);
+      setUsage({ inputTokens: 0, outputTokens: 0, requests: 0 });
+      try {
+        storage()?.removeItem(storageKey);
+      } catch {
+        // Ignore.
+      }
     }, []),
   };
 }
@@ -318,6 +393,10 @@ const styles = {
   },
 } satisfies Record<string, CSSProperties>;
 
+function formatTokens(count: number): string {
+  return count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count);
+}
+
 function floatStyle(
   position: "bottom-right" | "bottom-left" | "inline",
 ): CSSProperties {
@@ -391,14 +470,37 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
         <div style={styles.panel}>
           <div style={styles.header}>
             <span>{title}</span>
-            <button
-              type="button"
-              style={styles.headerButton}
-              aria-label="Close assistant"
-              onClick={() => setOpen(false)}
-            >
-              ✕
-            </button>
+            <span>
+              {assistant.usage.requests > 0 ? (
+                <span
+                  style={{ fontWeight: 400, fontSize: 11, color: "#807d99", marginRight: 10 }}
+                  title="Tokens used this conversation (in / out)"
+                  data-testid="assistant-usage"
+                >
+                  {formatTokens(assistant.usage.inputTokens)} /{" "}
+                  {formatTokens(assistant.usage.outputTokens)} tok
+                </span>
+              ) : null}
+              {assistant.messages.length > 0 && !assistant.busy ? (
+                <button
+                  type="button"
+                  style={styles.headerButton}
+                  aria-label="Clear conversation"
+                  title="Clear conversation"
+                  onClick={assistant.reset}
+                >
+                  ↺
+                </button>
+              ) : null}
+              <button
+                type="button"
+                style={styles.headerButton}
+                aria-label="Close assistant"
+                onClick={() => setOpen(false)}
+              >
+                ✕
+              </button>
+            </span>
           </div>
           <style>{`@keyframes agentface-dot { 0%, 80%, 100% { opacity: 0.25 } 40% { opacity: 1 } }`}</style>
           <div
@@ -443,7 +545,19 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
                 })}
               </div>
             ))}
-            {assistant.busy && assistant.pendingConfirmation === null ? (
+            {assistant.streamingText !== null &&
+            assistant.streamingText.length > 0 ? (
+              <p
+                style={styles.assistantBubble}
+                data-testid="assistant-streaming"
+              >
+                {assistant.streamingText}
+              </p>
+            ) : null}
+            {assistant.busy &&
+            assistant.pendingConfirmation === null &&
+            (assistant.streamingText === null ||
+              assistant.streamingText.length === 0) ? (
               <div style={styles.workingRow} aria-label="Assistant is working">
                 <span>Working</span>
                 {[0, 1, 2].map((dot) => (
