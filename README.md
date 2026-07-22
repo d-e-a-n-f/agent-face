@@ -71,6 +71,7 @@ See the
 | `@agentface/runtime` | In-memory registry + the enforced action lifecycle, revisions, traces |
 | `@agentface/react` | Provider, `AgentSurface`, hooks, knowledge, recommendations (+ `/hook-form`) |
 | `@agentface/assistant` | Provider-neutral model adapters + the assistant loop (+ `/react` widget, `/bedrock`) |
+| `@agentface/ai-sdk` | Vercel AI SDK bridge: any AI SDK model as the assistant's brain, or AgentFace actions as AI SDK tools |
 | `@agentface/next` | Route handler for the model endpoint (+ `/navigation`, `/app` umbrella) |
 | `@agentface/devtools` | Embeddable panel: inspect and operate everything without a model |
 | `@agentface/testing` | Deterministic test runtime (+ `/react` helpers) — no LLM in tests, ever |

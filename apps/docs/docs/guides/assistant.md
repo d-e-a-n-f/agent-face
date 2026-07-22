@@ -56,8 +56,16 @@ export const { POST } = createAgentFaceRouteHandler({
 });
 ```
 
-- `createBedrockAdapter` — Claude on AWS Bedrock (server-side; AWS credential
-  chain; `AWS_REGION` required).
+- **`createAISDKAdapter`** (`@agentface/ai-sdk`) — any Vercel AI SDK model:
+  OpenAI, Anthropic, Google, Mistral, Groq, Bedrock, local
+  OpenAI-compatible endpoints, and every other AI SDK provider.
+  ```ts
+  import { createAISDKAdapter } from "@agentface/ai-sdk";
+  import { anthropic } from "@ai-sdk/anthropic";
+  const adapter = createAISDKAdapter({ model: anthropic("claude-opus-4-8") });
+  ```
+- `createBedrockAdapter` — Claude on AWS Bedrock directly (server-side; AWS
+  credential chain; `AWS_REGION` required).
 - `createHttpModelAdapter` — the browser half; defaults to `/api/agentface`.
 - `createModelEndpoint` — the framework-neutral server half (wrap it for
   NestJS/Express).
@@ -66,6 +74,29 @@ export const { POST } = createAgentFaceRouteHandler({
 
 Writing another provider is implementing one method:
 `complete(request) → Promise<response>`.
+
+## Bring your own agent loop
+
+Already running your own `generateText`/`streamText`/`Agent` loop with the
+AI SDK? Expose the runtime to it as tools instead — AgentFace keeps owning
+capability, policy, preview, and confirmation; your loop keeps owning the
+model:
+
+```ts
+import { createAISDKTools } from "@agentface/ai-sdk";
+
+const tools = await createAISDKTools({
+  runtime,
+  principals: { user },
+  requestConfirmation: async (prepared) => await askUser(prepared),
+});
+const result = await generateText({ model, prompt: instruction, tools });
+```
+
+Discovery is policy-filtered (a denied action never becomes a tool), and
+confirmation defaults to **declined** — the model can never approve its own
+actions. Rebuild the tools each round: executed actions change what is
+mounted.
 
 ## Securing the endpoint in production
 
