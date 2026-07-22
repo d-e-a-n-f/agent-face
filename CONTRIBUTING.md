@@ -57,14 +57,14 @@ Releases are **manual and local** — CI never publishes. With changesets
 accumulated on `main`:
 
 ```bash
-pnpm version-packages   # applies changesets: bumps versions, writes changelogs
-git commit -am "Version packages" && git push
-pnpm release            # build + test, then publish to npm and push tags
+pnpm release
 ```
 
-`pnpm release` requires being logged in to npm (`npm login`) with publish
-rights on the @agentface org. `changeset publish` is idempotent — it only
-publishes versions missing from the registry.
+One interactive script does everything: preflight (clean tree, on main,
+synced, npm login), shows the plan from pending changesets, versions,
+runs the quality gates, publishes (npm prompts for OTP), pushes commit
+and tags, and verifies against the registry. It also handles the retry
+case where a bumped version never reached npm — publish is idempotent.
 
 Small, focused PRs review fastest. If a change grows past ~500 lines,
 consider splitting it or opening a discussion first.
