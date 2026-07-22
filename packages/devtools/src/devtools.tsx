@@ -1,8 +1,10 @@
 "use client";
 
+import { useAgentContext } from "@agentface/react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { ActionRunner } from "./action-runner.js";
+import { CoverageReport } from "./coverage.js";
 import { ActionInspector, ResourceInspector } from "./inspector.js";
 import { styles } from "./styles.js";
 import { SurfaceTree } from "./surface-tree.js";
@@ -41,6 +43,7 @@ export function AgentFaceDevTools(props: AgentFaceDevToolsProps): ReactNode {
   const [open, setOpen] = useState(props.defaultOpen ?? false);
   const version = useRuntimeVersion();
   const discovery = useDiscovery(version);
+  const { manifest } = useAgentContext();
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(
     null,
   );
@@ -85,6 +88,9 @@ export function AgentFaceDevTools(props: AgentFaceDevToolsProps): ReactNode {
               selectedInstanceId={effectiveSelection}
               onSelect={setSelectedInstanceId}
             />
+            {manifest !== undefined ? (
+              <CoverageReport manifest={manifest} discovery={discovery} />
+            ) : null}
             <TraceViewer version={version} />
           </div>
           <div style={styles.column}>

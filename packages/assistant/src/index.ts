@@ -14,7 +14,7 @@
  * @packageDocumentation
  */
 
-export { createAssistant } from "./assistant.js";
+export { createAssistant, DEFAULT_ASSISTANT_SYSTEM_PROMPT } from "./assistant.js";
 export type {
   AgentFaceAssistant,
   ConfirmationDecision,

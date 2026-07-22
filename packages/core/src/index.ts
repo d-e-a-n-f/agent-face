@@ -10,6 +10,12 @@
  * @packageDocumentation
  */
 
+export { defineAgentApplication } from "./application.js";
+export type {
+  AgentApplicationManifest,
+  AgentRouteDeclaration,
+} from "./application.js";
+
 export {
   defineAgentAction,
   defineAgentEvent,

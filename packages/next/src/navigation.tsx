@@ -1,6 +1,9 @@
 "use client";
 
-import type { AgentInputSchema } from "@agentface/core";
+import type {
+  AgentApplicationManifest,
+  AgentInputSchema,
+} from "@agentface/core";
 import { AgentFaceError, defineAgentFace } from "@agentface/core";
 import {
   AgentSurface,
@@ -31,6 +34,12 @@ export interface AgentFaceRoute {
 export interface AgentFaceNavigationProps {
   /** The screens the agent may navigate to. */
   readonly routes: readonly (string | AgentFaceRoute)[];
+  /**
+   * The static application manifest. When present it is exposed as the
+   * `application-map` resource, so agents can plan across screens they
+   * have not visited (which faces live where, on which entities).
+   */
+  readonly manifest?: AgentApplicationManifest;
   /** Journey entries retained. Default 25. */
   readonly journeyLimit?: number;
   /**
@@ -102,8 +111,34 @@ function pathSchema(templates: readonly string[]): AgentInputSchema<NavigateInpu
   };
 }
 
+function ManifestResource({
+  manifest,
+}: {
+  readonly manifest: AgentApplicationManifest;
+}): null {
+  useAgentResource({
+    id: "application-map",
+    name: "Application map",
+    description:
+      "Every screen in this application, with the capabilities (faces) and entity types found on each. Use it to plan across screens you have not visited; navigate there to make its capabilities available.",
+    getValue: () => ({
+      id: manifest.id,
+      ...(manifest.name !== undefined ? { name: manifest.name } : {}),
+      routes: manifest.routes.map((route) => ({
+        path: route.path,
+        description: route.description,
+        surfaces: [...route.surfaces],
+        ...(route.entities !== undefined
+          ? { entities: [...route.entities] }
+          : {}),
+      })),
+    }),
+  });
+  return null;
+}
+
 function NavigationCapabilities(
-  props: Required<Omit<AgentFaceNavigationProps, "routes">> & {
+  props: Required<Omit<AgentFaceNavigationProps, "routes" | "manifest">> & {
     readonly routes: readonly AgentFaceRoute[];
   },
 ): null {
@@ -209,6 +244,9 @@ export function AgentFaceNavigation(
         journeyLimit={props.journeyLimit ?? 25}
         settleDelayMs={props.settleDelayMs ?? 400}
       />
+      {props.manifest !== undefined ? (
+        <ManifestResource manifest={props.manifest} />
+      ) : null}
     </AgentSurface>
   );
 }

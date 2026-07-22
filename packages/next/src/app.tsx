@@ -1,8 +1,13 @@
 "use client";
 
-import type { AgentPrincipal, UserPrincipal } from "@agentface/core";
+import type {
+  AgentApplicationManifest,
+  AgentPrincipal,
+  UserPrincipal,
+} from "@agentface/core";
 import type { AgentHelpArticle } from "@agentface/react";
 import { AgentFaceKnowledge, AgentFaceProvider } from "@agentface/react";
+import { DEFAULT_ASSISTANT_SYSTEM_PROMPT } from "@agentface/assistant";
 import type { AgentFaceAssistantProps } from "@agentface/assistant/react";
 import { AgentFaceAssistant } from "@agentface/assistant/react";
 import { AgentFaceDevTools } from "@agentface/devtools";
@@ -24,7 +29,14 @@ export interface AgentFaceAppProps {
   readonly policy?: AgentPolicyEngine;
   /** Bring your own runtime instead (overrides `policy`). */
   readonly runtime?: AgentRuntime;
-  /** Screens the agent may navigate to (`:params` supported). Omit to skip navigation. */
+  /**
+   * The static application manifest (see `defineAgentApplication`): every
+   * screen, its faces, its entities. Supplies navigation routes (unless
+   * `routes` overrides), the `application-map` resource, the assistant's
+   * app-wide planning context, and the DevTools coverage report.
+   */
+  readonly manifest?: AgentApplicationManifest;
+  /** Screens the agent may navigate to (`:params` supported). Defaults to the manifest's routes. */
   readonly routes?: AgentFaceNavigationProps["routes"];
   /** App help articles for grounded answers. Omit to skip knowledge. */
   readonly help?: readonly AgentHelpArticle[];
@@ -67,11 +79,19 @@ export function AgentFaceApp(props: AgentFaceAppProps): ReactNode {
     application,
     user,
     agent,
-    routes,
+    manifest,
     help,
     assistant = true,
     devtools = "auto",
   } = props;
+
+  // Navigation routes come from the manifest unless explicitly overridden.
+  const routes =
+    props.routes ??
+    manifest?.routes.map((route) => ({
+      path: route.path,
+      description: route.description,
+    }));
 
   // The runtime is created once, but principals resolve per operation from
   // the latest props — login, logout, or agent changes apply immediately to
@@ -95,8 +115,27 @@ export function AgentFaceApp(props: AgentFaceAppProps): ReactNode {
 
   const showDevtools =
     devtools === "auto" ? process.env.NODE_ENV !== "production" : devtools;
-  const assistantProps =
+  const baseAssistantProps =
     assistant === false ? null : assistant === true ? {} : assistant;
+
+  // The manifest gives the assistant app-wide planning context: it learns
+  // every screen that exists, not just the one currently mounted.
+  const assistantProps =
+    baseAssistantProps === null
+      ? null
+      : manifest === undefined
+        ? baseAssistantProps
+        : {
+            ...baseAssistantProps,
+            systemPrompt: `${
+              baseAssistantProps.systemPrompt ?? DEFAULT_ASSISTANT_SYSTEM_PROMPT
+            }\n\n## Application screens\nThe whole application (navigate to a screen to make its capabilities available):\n${manifest.routes
+              .map(
+                (route) =>
+                  `- ${route.path} — ${route.description}${route.surfaces.length > 0 ? ` (capabilities: ${route.surfaces.join(", ")})` : ""}`,
+              )
+              .join("\n")}`,
+          };
 
   return (
     <AgentFaceProvider
@@ -104,8 +143,14 @@ export function AgentFaceApp(props: AgentFaceAppProps): ReactNode {
       {...(application !== undefined ? { application } : {})}
       {...(user !== undefined ? { user } : {})}
       {...(agent !== undefined ? { agent } : {})}
+      {...(manifest !== undefined ? { manifest } : {})}
     >
-      {routes !== undefined ? <AgentFaceNavigation routes={routes} /> : null}
+      {routes !== undefined ? (
+        <AgentFaceNavigation
+          routes={routes}
+          {...(manifest !== undefined ? { manifest } : {})}
+        />
+      ) : null}
       {help !== undefined ? <AgentFaceKnowledge articles={help} /> : null}
       {children}
       {assistantProps !== null ? <AgentFaceAssistant {...assistantProps} /> : null}

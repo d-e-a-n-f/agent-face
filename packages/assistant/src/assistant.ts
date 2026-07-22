@@ -63,7 +63,12 @@ export interface AgentFaceAssistant {
   reset(): void;
 }
 
-const DEFAULT_SYSTEM_PROMPT = `You are an assistant operating a software application on the user's behalf through AgentFace, the application's typed agent interface.
+/**
+ * The assistant's default system prompt. Exported so callers can extend it
+ * (append app-specific guidance) rather than replace it when passing
+ * `systemPrompt`.
+ */
+export const DEFAULT_ASSISTANT_SYSTEM_PROMPT = `You are an assistant operating a software application on the user's behalf through AgentFace, the application's typed agent interface.
 
 Rules:
 - Only interact with the application through the provided tools. Never invent tool results or claim an action succeeded without a tool result showing it.
@@ -238,7 +243,7 @@ export function createAssistant(
   const {
     runtime,
     adapter,
-    systemPrompt = DEFAULT_SYSTEM_PROMPT,
+    systemPrompt = DEFAULT_ASSISTANT_SYSTEM_PROMPT,
     maxIterations = 12,
     onUpdate,
   } = options;

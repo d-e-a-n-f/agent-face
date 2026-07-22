@@ -566,6 +566,7 @@ export function createAgentRuntime(
             : {}),
           ...(definition.tags !== undefined ? { tags: definition.tags } : {}),
           confirmationPolicy,
+          hasPreview: preview !== undefined,
           preconditions: (definition.preconditions ?? []).map(
             (precondition) => ({
               id: precondition.id,

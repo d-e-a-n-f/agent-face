@@ -1,6 +1,10 @@
 "use client";
 
-import type { AgentPrincipal, UserPrincipal } from "@agentface/core";
+import type {
+  AgentApplicationManifest,
+  AgentPrincipal,
+  UserPrincipal,
+} from "@agentface/core";
 import type { AgentRuntime } from "@agentface/runtime";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
@@ -17,6 +21,8 @@ export interface AgentFaceContextValue {
   readonly application?: AgentFaceApplicationInfo;
   readonly user?: UserPrincipal;
   readonly agent?: AgentPrincipal;
+  /** The static application manifest, when the app declares one. */
+  readonly manifest?: AgentApplicationManifest;
 }
 
 const AgentFaceContext = createContext<AgentFaceContextValue | undefined>(
@@ -31,6 +37,8 @@ export interface AgentFaceProviderProps {
   readonly user?: UserPrincipal;
   /** The agent operating the application, when one is active. */
   readonly agent?: AgentPrincipal;
+  /** The static application manifest (see `defineAgentApplication`). */
+  readonly manifest?: AgentApplicationManifest;
   readonly children: ReactNode;
 }
 
@@ -56,15 +64,16 @@ export function AgentFaceProvider(props: AgentFaceProviderProps): ReactNode {
       "AgentFaceProvider is nested inside another AgentFaceProvider; the inner runtime will shadow the outer one.",
     );
   }
-  const { runtime, application, user, agent, children } = props;
+  const { runtime, application, user, agent, manifest, children } = props;
   const value = useMemo<AgentFaceContextValue>(
     () => ({
       runtime,
       ...(application !== undefined ? { application } : {}),
       ...(user !== undefined ? { user } : {}),
       ...(agent !== undefined ? { agent } : {}),
+      ...(manifest !== undefined ? { manifest } : {}),
     }),
-    [runtime, application, user, agent],
+    [runtime, application, user, agent, manifest],
   );
   return (
     <AgentFaceContext.Provider value={value}>

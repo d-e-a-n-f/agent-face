@@ -59,4 +59,41 @@ client-side navigation — so it can read data on one screen, navigate, and use
 what it learned to fill things in on another. The Portal's cross-page invoice
 flow is exactly this.
 
-(With `<AgentFaceApp>`, pass `routes={...}`.)
+(With `<AgentFaceApp>`, pass `routes={...}` — or better, a manifest.)
+
+## The application manifest
+
+Live surfaces tell the agent what is executable *right now*; the manifest
+tells it what exists *anywhere*:
+
+```ts
+export const applicationManifest = defineAgentApplication({
+  id: "acme-portal",
+  routes: [
+    {
+      path: "/clients/:clientId",
+      description: "One client: profile, onboarding, invoices",
+      surfaces: ["crm.client"],
+      entities: ["client"],
+    },
+  ],
+});
+
+<AgentFaceApp manifest={applicationManifest} …>
+```
+
+One declaration powers four things:
+
+1. **Navigation routes** (no separate `routes` prop needed).
+2. **The `application-map` resource** — agents plan across screens they
+   have not visited, then navigate to make capabilities available.
+3. **The assistant's system context** — it knows every screen from the
+   first message.
+4. **The DevTools "Agent readiness" report** — the manifest diffed against
+   live mounts, plus quality checks (routes exposing no surfaces, mounted
+   faces missing from the manifest, sensitive actions without previews or
+   confirmation), scored out of 100.
+
+The manifest never grants execution: it is a map, not a permission. What a
+route *declares* and what actually *mounts* are reconciled by the coverage
+report, not trusted blindly.

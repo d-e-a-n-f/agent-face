@@ -121,6 +121,8 @@ export interface AgentActionDescriptor {
   readonly sensitivity?: AgentSensitivity;
   readonly tags?: readonly string[];
   readonly confirmationPolicy: AgentConfirmationPolicyKind;
+  /** Whether the action generates a preview at preparation time. */
+  readonly hasPreview: boolean;
   readonly preconditions: readonly {
     readonly id: string;
     readonly description: string;
