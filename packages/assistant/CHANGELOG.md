@@ -1,5 +1,13 @@
 # @agentface/assistant
 
+## 0.1.1
+
+### Patch Changes
+
+- dfd7bec: The shipped assistant widget adopts the AgentFace brand: gradient
+  launcher, indigo user bubbles and send button, Inter, refreshed
+  recommendation chips. Purely visual — no behavioural change.
+
 ## 0.1.0
 
 ### Minor Changes

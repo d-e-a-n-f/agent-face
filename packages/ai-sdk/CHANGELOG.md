@@ -1,5 +1,12 @@
 # @agentface/ai-sdk
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [dfd7bec]
+  - @agentface/assistant@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
