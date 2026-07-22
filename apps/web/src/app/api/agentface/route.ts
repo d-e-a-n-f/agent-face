@@ -17,4 +17,17 @@ export const { POST } = createAgentFaceRouteHandler({
     );
     return createBedrockAdapter();
   },
+  // The playground is a local demo, so development is open — but the
+  // endpoint refuses to run unauthenticated in a production build. Wire
+  // this to real auth if you deploy it.
+  authorize: async () => {
+    if (process.env.NODE_ENV === "production") {
+      return Response.json(
+        { error: "The demo endpoint is not enabled in production" },
+        { status: 401 },
+      );
+    }
+    return null;
+  },
+  redactErrors: process.env.NODE_ENV === "production",
 });

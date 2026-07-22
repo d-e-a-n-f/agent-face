@@ -47,3 +47,6 @@ MISSION.md
 CLAUDE.md
 AGENTS.md
 /docs/
+
+# Generated manifest artefacts
+.agentface/

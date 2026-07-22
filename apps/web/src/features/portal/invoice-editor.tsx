@@ -201,6 +201,13 @@ function InvoiceEditorFeature({
       "Write the invoice off entirely, removing it from the client's account",
     input: emptyInput,
     sensitivity: "restricted",
+    // Restricted, so the playground policy denies execution outright —
+    // but the definition still declares its own gates honestly: even
+    // under a permissive policy this would preview and confirm.
+    confirmation: "always",
+    preview: () => ({
+      summary: `Write off ${liveInvoice().number} (£${invoiceTotal(liveInvoice()).toLocaleString()}) — removes it entirely`,
+    }),
     execute: () => {
       mutate((current) => ({
         ...current,
