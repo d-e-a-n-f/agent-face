@@ -1,6 +1,6 @@
 {
   "name": "@agentface/policy",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "AgentFace policy engine: allow, confirm or deny agent operations",
   "license": "MIT",
   "type": "module",
