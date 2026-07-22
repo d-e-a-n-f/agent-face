@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@agentface/cli':
+        specifier: workspace:*
+        version: link:packages/cli
       '@changesets/cli':
         specifier: ^2.31.1
         version: 2.31.1(@types/node@22.20.1)
@@ -160,6 +163,9 @@ importers:
         specifier: ^4.0.0
         version: 4.4.3
     devDependencies:
+      '@agentface/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
       '@agentface/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
