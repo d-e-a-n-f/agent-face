@@ -28,20 +28,20 @@ the assistant with a deterministic mock.
 | *"How do discounts work on invoices?"* | Answers grounded in the app's own help articles |
 | *"Onboard Northshore Limited — company number 09876543, UK, 1 Harbour Street, London EC2A 4BX, contact Maya Chen (maya@northshore.example). Save a draft but do not submit."* | Navigates to the right screen, fills a real react-hook-form through form state, saves, and honours "do not submit"; the **Submit** recommendation appears once the form is valid |
 | *"Create an invoice for Wilshire Group for a £1,200 consulting day and send it."* | Cross-page flow: client page → create → open invoice → add line → confirmation card with the exact amount and recipient |
-| *"Create a Sterling institutional share class under Global Credit Fund II… publish it to Apollo and Wilshire once approved."* | A seven-step agent-first chain with two confirmation gates and honest partial failure (Wilshire is degraded on purpose — its failure is reported; Apollo's success stands) |
 
 Also try: edit the invoice after the assistant prepares a send (staleness
 rejection), decline a confirmation (the chain stops and says so), run
-`decommission-product` from DevTools (policy denies restricted executions),
-and hard-refresh (the demo persists in localStorage; **Reset demo data** on
-the dashboard reseeds).
+`write-off` on an invoice from DevTools (policy denies restricted
+executions), and hard-refresh (the demo persists in localStorage; **Reset
+demo data** on the dashboard reseeds).
 
 ## The two interaction patterns
 
 - **Agent as helper** — Client onboarding: the human owns a real form; the
   agent fills it via `useAgentForm`; the human submits.
-- **Agent as primary** — Products: the screen is read-only status; the whole
-  share-class workflow happens through the agent, gate by gate.
+- **Agent as primary** — Invoicing: one instruction drives the whole chain
+  (navigate → create → add line → send), pausing only on the confirmation
+  gate.
 
 The single lite example, `/examples/counter`, is a ~40-line file for learning
 the API shape in thirty seconds.

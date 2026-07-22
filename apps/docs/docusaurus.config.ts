@@ -73,10 +73,6 @@ const config: Config = {
               label: "GitHub",
               href: "https://github.com/d-e-a-n-f/agent-face",
             },
-            {
-              label: "Architecture decisions",
-              href: "https://github.com/d-e-a-n-f/agent-face/tree/main/docs/decisions",
-            },
           ],
         },
       ],

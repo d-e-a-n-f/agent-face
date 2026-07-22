@@ -16,9 +16,6 @@ export default function PortalLayout({
           <Link href="/portal/clients" className="hover:underline">
             Clients
           </Link>
-          <Link href="/portal/products" className="hover:underline">
-            Products
-          </Link>
         </nav>
       </header>
       <PortalShell>{children}</PortalShell>

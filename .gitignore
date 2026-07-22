@@ -41,6 +41,9 @@ playwright-report/
 .DS_Store
 *.pem
 
-# Local planning docs (not tracked)
+# Local planning docs and agent instructions (not tracked)
 .plans/
 MISSION.md
+CLAUDE.md
+AGENTS.md
+/docs/

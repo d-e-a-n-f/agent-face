@@ -134,8 +134,8 @@ function toolResults(
 
 describe("createAssistant", () => {
   it("MVP multi-action operation: adds a £100 consulting line item and prepares the invoice for sending", async () => {
-    // MISSION.md Phase 6 acceptance + §21 "multi-action operation": one
-    // instruction chains two actions without bypassing policy or confirmation.
+    // One instruction chains two actions without bypassing policy or
+    // confirmation.
     const runtime = createAgentRuntime();
     const { invoice } = setupInvoice(runtime);
     const confirmations: string[] = [];

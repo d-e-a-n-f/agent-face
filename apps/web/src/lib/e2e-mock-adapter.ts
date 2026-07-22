@@ -8,7 +8,7 @@ import type {
 /**
  * TEST FIXTURE — never active outside e2e. The real widget default is the
  * LLM endpoint; this adapter exists solely so Playwright can drive the
- * assistant deterministically (ADR 0006: no real model calls in CI). It is
+ * assistant deterministically (no real model calls in CI, ever). It is
  * bundled only behind NEXT_PUBLIC_AGENTFACE_MOCK=1, which only the
  * Playwright web server sets.
  *
@@ -21,8 +21,7 @@ import type {
  *    it through the real form state, save a draft, do NOT submit.
  * 2. "invoice for wilshire" — navigate to the client, create an invoice,
  *    open it, add the line item, send (confirmation-gated).
- * 3. "share class" — the publication chain on /portal/products.
- * 4. "discount" question — search the app's help, read the article, answer
+ * 3. "discount" question — search the app's help, read the article, answer
  *    grounded in it.
  */
 
@@ -203,120 +202,7 @@ function invoiceStep(request: AgentModelRequest): AgentModelResponse {
   return call(createInvoice, {}, "Creating a new draft invoice.");
 }
 
-/** Scenario 3: the Sterling share-class chain on /portal/products. */
-function publicationStep(request: AgentModelRequest): AgentModelResponse {
-  const createResult = findResult(request, "__create-share-class");
-  const shareClassId =
-    outcomeOf<{ shareClassId?: string }>(createResult)?.shareClassId ?? "";
-
-  if (createResult === undefined) {
-    const create = findTool(request, "__create-share-class");
-    if (create === undefined) {
-      return navigateOr(
-        request,
-        "/portal/products",
-        "Opening the products screen.",
-        "Open /portal/products and try again.",
-      );
-    }
-    return call(
-      create,
-      { name: "Sterling Institutional", currency: "GBP" },
-      "Creating the Sterling institutional share class under Global Credit Fund II.",
-    );
-  }
-
-  const steps: readonly {
-    readonly suffix: string;
-    readonly input: (id: string) => unknown;
-    readonly narration: string;
-  }[] = [
-    {
-      suffix: "__set-minimum-subscription",
-      input: (id) => ({ shareClassId: id, minimumSubscription: 5_000_000 }),
-      narration: "Overriding the minimum subscription to £5,000,000.",
-    },
-    {
-      suffix: "__apply-fee-schedule",
-      input: (id) => ({ shareClassId: id, feeScheduleId: "fee-institutional" }),
-      narration: "Applying the institutional fee schedule.",
-    },
-    {
-      suffix: "__attach-document",
-      input: (id) => ({
-        shareClassId: id,
-        documentId: "doc-supplement-2026-06",
-      }),
-      narration: "Attaching the latest supplement (June 2026).",
-    },
-    {
-      suffix: "__run-validation",
-      input: (id) => ({ shareClassId: id }),
-      narration: "Running compliance validation.",
-    },
-    {
-      suffix: "__request-approval",
-      input: (id) => ({ shareClassId: id, approver: "Sarah" }),
-      narration: "Sending to Sarah for approval.",
-    },
-    {
-      suffix: "__approve-share-class",
-      input: (id) => ({ shareClassId: id }),
-      narration: "Recording Sarah's approval — this needs your confirmation.",
-    },
-    {
-      suffix: "__publish-share-class",
-      input: (id) => ({
-        shareClassId: id,
-        workspaceIds: ["apollo", "wilshire"],
-      }),
-      narration:
-        "Publishing to Apollo and Wilshire — this needs your confirmation.",
-    },
-  ];
-
-  for (const step of steps) {
-    const result = findResult(request, step.suffix);
-    if (result === undefined) {
-      const tool = findTool(request, step.suffix);
-      if (tool === undefined) {
-        return finish(`The ${step.suffix} capability is not available here.`);
-      }
-      return call(tool, step.input(shareClassId), step.narration);
-    }
-    if (wasDeclined(result)) {
-      return finish("Understood — stopping there. Nothing further was done.");
-    }
-  }
-
-  const publishOutcome = outcomeOf<{
-    results?: readonly {
-      workspaceId: string;
-      status: string;
-      error?: string;
-    }[];
-  }>(findResult(request, "__publish-share-class"));
-  const perWorkspace = publishOutcome?.results ?? [];
-  const published = perWorkspace.filter(
-    (result) => result.status === "published",
-  );
-  const failed = perWorkspace.filter((result) => result.status === "failed");
-  return finish(
-    `Done. Sterling Institutional is validated, approved by Sarah, and published to ${published
-      .map((result) => result.workspaceId)
-      .join(", ")}.${
-      failed.length > 0
-        ? ` Publication to ${failed
-            .map((result) => result.workspaceId)
-            .join(", ")} FAILED: ${failed
-            .map((result) => result.error)
-            .join("; ")} — the successful publications stand; nothing was rolled back.`
-        : ""
-    }`,
-  );
-}
-
-/** Scenario 4: a "how does X work" question — help-grounded answer. */
+/** Scenario 3: a "how does X work" question — help-grounded answer. */
 function helpStep(request: AgentModelRequest): AgentModelResponse {
   const readResult = findResult(request, "__read-help-article");
   if (readResult !== undefined) {
@@ -357,9 +243,6 @@ export function createE2eMockAdapter(): AgentModelAdapter {
       const instruction = userInstruction(request);
       if (instruction.includes("northshore")) {
         return Promise.resolve(onboardingStep(request));
-      }
-      if (instruction.includes("share class")) {
-        return Promise.resolve(publicationStep(request));
       }
       if (instruction.includes("invoice for wilshire")) {
         return Promise.resolve(invoiceStep(request));

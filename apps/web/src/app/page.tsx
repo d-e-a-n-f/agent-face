@@ -16,8 +16,8 @@ export default function Home() {
         >
           <p className="text-lg font-semibold">The Portal →</p>
           <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-            A working multi-page mini-app — clients, onboarding, invoicing,
-            product publication — with the assistant as a colleague: it knows
+            A working multi-page mini-app — clients, onboarding, invoicing —
+            with the assistant as a colleague: it knows
             the app&apos;s docs, works across screens, fills real forms,
             suggests next steps, and pauses on confirmation cards for anything
             that matters.

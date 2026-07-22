@@ -5,8 +5,8 @@ title: Testing
 # Testing
 
 **No LLM in your tests, ever.** The runtime and everything beneath it is
-fully operable deterministically — that's an architecture decision
-(ADR 0006), not an aspiration.
+fully operable deterministically — that's an architecture decision, not an
+aspiration.
 
 ## Contract tests
 

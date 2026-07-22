@@ -40,7 +40,3 @@ discover → read → prepare → confirm → execute → trace
 core → policy → runtime → { react, testing, devtools, assistant } → next
 ```
 
-Full dependency rules, the reasoning behind each decision, and the
-alternatives considered live in the repo as
-[architecture decision records](https://github.com/d-e-a-n-f/agent-face/tree/main/docs/decisions)
-(ADR 0001–0009).

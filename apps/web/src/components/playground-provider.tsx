@@ -29,7 +29,7 @@ export function PlaygroundProvider({
       user={{ type: "user", id: "user_dean", displayName: "Dean" }}
       policy={createPolicyEngine([
         // confidential+ executions require confirmation; restricted ones are
-        // denied outright (see the decommission-product demo).
+        // denied outright (see the invoice write-off demo).
         enforceActionConfirmation(),
         enforceSensitivity({ execute: "confidential" }),
       ])}
@@ -49,10 +49,6 @@ export function PlaygroundProvider({
         {
           path: "/portal/invoices/:invoiceId",
           description: "One invoice: add line items, discount, send",
-        },
-        {
-          path: "/portal/products",
-          description: "Share classes: create, validate, approve, publish",
         },
       ]}
       assistant={{

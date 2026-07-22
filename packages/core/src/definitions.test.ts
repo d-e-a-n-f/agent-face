@@ -169,7 +169,7 @@ describe("defineAgentAction", () => {
     const { humanizeId, emptyInputSchema } = await import("./index.js");
     expect(humanizeId("save-draft")).toBe("Save draft");
     expect(humanizeId("billing.invoice")).toBe("Invoice");
-    expect(humanizeId("create-share-class")).toBe("Create share class");
+    expect(humanizeId("create-line-item")).toBe("Create line item");
     expect(emptyInputSchema.parse({})).toEqual({});
     expect(emptyInputSchema.parse(undefined)).toEqual({});
     expectInvalidInput(() => emptyInputSchema.parse({ nope: 1 }));

@@ -58,6 +58,6 @@ not retry" result to the model.
 ## Sensitivity ceilings in practice
 
 The Portal demo runs exactly the policy above: sending an invoice
-(`confidential`) works but always asks; `decommission-product` (`restricted`)
-is denied outright with `POLICY_DENIED` — try it from the DevTools runner on
-the Products page.
+(`confidential`) works but always asks; `write-off` (`restricted`) is denied
+outright with `POLICY_DENIED` — try it from the DevTools runner on any
+invoice page.

@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
  * own help articles — searched and read through typed actions, grounded,
  * with an offer to do the thing.
  */
-test("assistant answers product questions from the app's help content", async ({
+test("assistant answers questions from the app's help content", async ({
   page,
 }) => {
   await page.goto("/portal");

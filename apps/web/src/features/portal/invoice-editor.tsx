@@ -194,6 +194,25 @@ function InvoiceEditorFeature({
     },
   });
 
+  useAgentAction({
+    id: "write-off",
+    name: "Write off invoice",
+    description:
+      "Write the invoice off entirely, removing it from the client's account",
+    input: emptyInput,
+    sensitivity: "restricted",
+    execute: () => {
+      mutate((current) => ({
+        ...current,
+        invoices: current.invoices.filter(
+          (candidate) => candidate.id !== invoiceId,
+        ),
+      }));
+      touch();
+      return { writtenOff: true };
+    },
+  });
+
   if (invoice === undefined || client === undefined) {
     return <p className="text-sm text-neutral-500">Unknown invoice.</p>;
   }

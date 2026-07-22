@@ -10,12 +10,12 @@ live, one-tap next-step buttons:
 
 ```tsx
 useAgentAction({
-  id: "request-approval",
-  description: "Send a validated share class to a named approver",
+  id: "send",
+  description: "Send the completed invoice to the client",
   recommend: {
-    when: () => shareClasses.some((sc) => sc.validation === "passed" && sc.approval === "draft"),
-    reason: "A validated share class is awaiting sign-off",
-    instruction: () => `Send ${nextUnapproved().name} to Sarah for approval`,
+    when: () => invoice.status === "draft" && invoice.lineItems.length > 0,
+    reason: "The draft has line items and is ready to send",
+    instruction: () => `Send invoice ${invoice.number} to the client`,
     priority: 8,
   },
   // …
@@ -39,6 +39,6 @@ useAgentAction({
 Deterministic (testable in CI), instant (no model round-trip to render
 buttons), and honest — the app's own definition of "sensible next step", not
 a hallucination. Watch it in the Portal: an empty onboarding form recommends
-nothing; once the agent fills it validly, **Submit onboarding** appears; the
-Products page walks create → validate → approve → publish one button at a
-time.
+nothing; once the agent fills it validly, **Submit onboarding** appears; on
+an invoice, **Send invoice** appears the moment the draft has its first line
+item.

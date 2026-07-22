@@ -21,15 +21,9 @@ export const PORTAL_HELP: readonly AgentHelpArticle[] = [
     tags: ["invoices", "send", "confirmation"],
   },
   {
-    id: "publication-approvals",
-    title: "Share class publication and approvals",
-    body: "New share classes inherit the product's configuration and can override the minimum subscription, fee schedule, and documents. Before publication a share class must pass compliance validation (a current supplement attached, permitted currency, minimum subscription within the ceiling) and be approved by a named approver. Any change to the share class resets validation and approval. Publication targets each workspace independently: some can succeed while others fail, and failures are reported without rolling back successes. The Wilshire workspace is currently degraded and rejects new publications.",
-    tags: ["products", "share-classes", "approval", "publication", "workspaces"],
-  },
-  {
     id: "what-can-the-assistant-do",
     title: "What the assistant can do",
-    body: "The assistant sees the capabilities of the screen you are on (and can move between screens). It can read state, fill forms, and run business actions — but anything consequential (sending invoices, approvals, publication, large discounts) pauses on a confirmation card that you must approve. It also suggests recommended next steps as buttons, which update as your data changes.",
+    body: "The assistant sees the capabilities of the screen you are on (and can move between screens). It can read state, fill forms, and run business actions — but anything consequential (sending invoices, large discounts) pauses on a confirmation card that you must approve. It also suggests recommended next steps as buttons, which update as your data changes.",
     tags: ["assistant", "help", "confirmation"],
   },
 ];

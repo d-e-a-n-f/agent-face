@@ -56,10 +56,10 @@ AWS_REGION=us-east-1 pnpm dev   # AWS creds → Claude via Bedrock
 # open http://localhost:3000/portal
 ```
 
-A working multi-page mini-app — clients, onboarding, invoicing, product
-publication — with suggested prompts on the dashboard. Without AWS
-credentials everything works except the live model: the DevTools panel
-operates every capability by hand. See the
+A working multi-page mini-app — clients, onboarding, invoicing — with
+suggested prompts on the dashboard. Without AWS credentials everything works
+except the live model: the DevTools panel operates every capability by hand.
+See the
 [demo walkthrough](https://d-e-a-n-f.github.io/agent-face/docs/playground).
 
 ## Packages
@@ -84,20 +84,16 @@ a pnpm workspace today.
 ```bash
 pnpm install
 pnpm build          # all packages + apps
-pnpm test           # unit tests (130+; deterministic, no model calls)
+pnpm test           # unit tests (deterministic, no model calls)
 pnpm check-types    # strict TS incl. noUncheckedIndexedAccess, exactOptionalPropertyTypes
 pnpm lint
-pnpm --filter web test:e2e   # Playwright: 11 browser specs incl. full agent flows
+pnpm --filter web test:e2e   # Playwright browser specs incl. full agent flows
 pnpm --filter docs dev       # docs site on :3100
 ```
 
-Architecture decisions are recorded in [`docs/decisions`](docs/decisions)
-(ADR 0001–0009). The build plan and MVP evidence live in
-[`docs/MVP-CHECKLIST.md`](docs/MVP-CHECKLIST.md).
-
 ## Current limitations
 
-- Browser-local, in-memory runtime by design (ADR 0001) — no server-side or
+- Browser-local, in-memory runtime by design — no server-side or
   cross-application execution yet; contracts are serialisable to enable that
   later.
 - One real model adapter (Claude via AWS Bedrock); the adapter contract is

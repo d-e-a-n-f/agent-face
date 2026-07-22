@@ -4,7 +4,7 @@ title: Actions
 
 # Actions
 
-Actions are business intent — `send`, `apply-discount`, `publish-share-class`
+Actions are business intent — `send`, `apply-discount`, `submit-onboarding`
 — never UI mechanics. Register them on the nearest surface with
 `useAgentAction`:
 
