@@ -35,7 +35,7 @@
     "@agentface/policy": "workspace:*",
     "@agentface/typescript-config": "workspace:*",
     "ai": "^7.0.0",
-    "eslint": "^9.31.0",
+    "eslint": "^10.7.0",
     "typescript": "5.9.2",
     "vitest": "^3.2.4"
   },

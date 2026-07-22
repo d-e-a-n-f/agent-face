@@ -39,7 +39,7 @@
     "@agentface/policy": "workspace:^",
     "@agentface/typescript-config": "workspace:*",
     "@anthropic-ai/bedrock-sdk": "^0.32.0",
-    "eslint": "^9.31.0",
+    "eslint": "^10.7.0",
     "typescript": "5.9.2",
     "vitest": "^3.2.4",
     "@agentface/react": "workspace:*",
