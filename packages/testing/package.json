@@ -46,7 +46,7 @@
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
-    "@agentface/react": "workspace:*",
+    "@agentface/react": "0.x",
     "@testing-library/react": ">=16",
     "react": "^19"
   },

@@ -53,7 +53,7 @@
   },
   "peerDependencies": {
     "@anthropic-ai/bedrock-sdk": ">=0.20.0",
-    "@agentface/react": "workspace:*",
+    "@agentface/react": "0.x",
     "react": "^19"
   },
   "peerDependenciesMeta": {
