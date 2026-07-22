@@ -1,0 +1,68 @@
+{
+  "name": "@agentface/react",
+  "version": "0.1.0",
+  "description": "React bindings for the AgentFace runtime",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./hook-form": {
+      "types": "./dist/hook-form.d.ts",
+      "default": "./dist/hook-form.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agentface/core": "workspace:*",
+    "@agentface/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@agentface/eslint-config": "workspace:*",
+    "@agentface/typescript-config": "workspace:*",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9.31.0",
+    "jsdom": "^26.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4",
+    "react-hook-form": "^7.54.0"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-hook-form": ">=7"
+  },
+  "peerDependenciesMeta": {
+    "react-hook-form": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/react"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

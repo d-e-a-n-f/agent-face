@@ -1,0 +1,25 @@
+{
+  "name": "agent-face",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.31.1",
+    "prettier": "^3.7.4",
+    "turbo": "^2.10.5",
+    "typescript": "5.9.2",
+    "@agentface/cli": "workspace:*"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

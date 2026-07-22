@@ -1,0 +1,73 @@
+{
+  "name": "@agentface/next",
+  "version": "0.1.0",
+  "description": "Next.js integration for AgentFace: the assistant model endpoint as a drop-in route handler",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./navigation": {
+      "types": "./dist/navigation.d.ts",
+      "default": "./dist/navigation.js"
+    },
+    "./app": {
+      "types": "./dist/app.d.ts",
+      "default": "./dist/app.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agentface/assistant": "workspace:*",
+    "@agentface/core": "workspace:*",
+    "@agentface/react": "workspace:*",
+    "@agentface/devtools": "workspace:*",
+    "@agentface/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@agentface/eslint-config": "workspace:*",
+    "@agentface/typescript-config": "workspace:*",
+    "eslint": "^9.31.0",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4",
+    "@types/react": "^19",
+    "next": "16.2.10",
+    "react": "^19.2.7"
+  },
+  "peerDependencies": {
+    "next": ">=15",
+    "react": "^19"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/next"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

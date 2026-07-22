@@ -1,0 +1,21 @@
+name: Feature request
+description: Propose an addition or change
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation where AgentFace falls short today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed shape
+      description: API sketch, if you have one.
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety interaction
+      description: How does this interact with policy, confirmation, and the action lifecycle? (Features that let a model bypass them won't land.)

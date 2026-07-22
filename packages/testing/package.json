@@ -1,0 +1,75 @@
+{
+  "name": "@agentface/testing",
+  "version": "0.1.0",
+  "description": "Deterministic testing helpers for AgentFace",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agentface/core": "workspace:*",
+    "@agentface/policy": "workspace:*",
+    "@agentface/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@agentface/eslint-config": "workspace:*",
+    "@agentface/react": "workspace:^",
+    "@agentface/typescript-config": "workspace:*",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9.31.0",
+    "jsdom": "^26.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "@agentface/react": "0.x",
+    "@testing-library/react": ">=16",
+    "react": "^19"
+  },
+  "peerDependenciesMeta": {
+    "@agentface/react": {
+      "optional": true
+    },
+    "@testing-library/react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/testing"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

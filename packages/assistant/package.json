@@ -1,0 +1,81 @@
+{
+  "name": "@agentface/assistant",
+  "version": "0.1.0",
+  "description": "Model adapters and the assistant loop for operating AgentFace runtimes",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bedrock": {
+      "types": "./dist/bedrock.d.ts",
+      "default": "./dist/bedrock.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agentface/core": "workspace:*",
+    "@agentface/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@agentface/eslint-config": "workspace:*",
+    "@agentface/policy": "workspace:^",
+    "@agentface/typescript-config": "workspace:*",
+    "@anthropic-ai/bedrock-sdk": "^0.32.0",
+    "eslint": "^9.31.0",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4",
+    "@agentface/react": "workspace:*",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "jsdom": "^26.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/bedrock-sdk": ">=0.20.0",
+    "@agentface/react": "0.x",
+    "react": "^19"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/bedrock-sdk": {
+      "optional": true
+    },
+    "@agentface/react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/assistant"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

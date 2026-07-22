@@ -1,0 +1,50 @@
+{
+  "name": "@agentface/cli",
+  "version": "0.1.0",
+  "description": "AgentFace CLI: init, doctor, and manifest generation",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "agentface": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agentface/core": "workspace:*",
+    "jiti": "^2.4.2"
+  },
+  "devDependencies": {
+    "@agentface/eslint-config": "workspace:*",
+    "@agentface/typescript-config": "workspace:*",
+    "eslint": "^9.31.0",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4",
+    "@types/node": "^22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-e-a-n-f/agent-face.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

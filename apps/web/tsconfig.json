@@ -1,0 +1,25 @@
+{
+  "extends": "@agentface/typescript-config/nextjs.json",
+  "compilerOptions": {
+    // Vendored shadcn components aren't written to exactOptionalPropertyTypes;
+    // the SDK packages keep it on.
+    "exactOptionalPropertyTypes": false,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
