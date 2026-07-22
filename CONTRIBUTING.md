@@ -51,6 +51,21 @@ Node >= 20, pnpm 9.
    features, patch for fixes).
 4. Open the PR — CI must pass (types, lint, tests, build, e2e, pack).
 
+## Releases (maintainers)
+
+Releases are **manual and local** — CI never publishes. With changesets
+accumulated on `main`:
+
+```bash
+pnpm version-packages   # applies changesets: bumps versions, writes changelogs
+git commit -am "Version packages" && git push
+pnpm release            # build + test, then publish to npm and push tags
+```
+
+`pnpm release` requires being logged in to npm (`npm login`) with publish
+rights on the @agentface org. `changeset publish` is idempotent — it only
+publishes versions missing from the registry.
+
 Small, focused PRs review fastest. If a change grows past ~500 lines,
 consider splitting it or opening a discussion first.
 
