@@ -1,6 +1,6 @@
 {
   "name": "@agentface/testing",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Deterministic testing helpers for AgentFace",
   "license": "MIT",
   "type": "module",

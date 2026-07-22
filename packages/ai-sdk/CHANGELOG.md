@@ -1,0 +1,26 @@
+# @agentface/ai-sdk
+
+## 0.1.0
+
+### Minor Changes
+
+- 78bc90c: New package: Vercel AI SDK integration.
+  - `createAISDKAdapter({ model })` — use any AI SDK language model as the
+    AgentFace assistant's model in one line; one integration covers every AI
+    SDK provider (OpenAI, Anthropic, Google, Mistral, Groq, Bedrock, local
+    OpenAI-compatible endpoints, …). Tools are declared without execute
+    functions, so the AI SDK never runs anything — the AgentFace loop owns
+    execution, policy, and confirmation.
+  - `createAISDKTools({ runtime, principals, requestConfirmation })` — expose
+    an AgentFace runtime to your own `generateText`/`streamText`/`Agent`
+    loop as an AI SDK ToolSet. Discovery is policy-filtered (denied actions
+    never become tools) and confirmation defaults to declined.
+
+### Patch Changes
+
+- Updated dependencies [fb74184]
+- Updated dependencies [27a30f1]
+- Updated dependencies [f426699]
+  - @agentface/core@0.1.0
+  - @agentface/runtime@0.1.0
+  - @agentface/assistant@0.1.0

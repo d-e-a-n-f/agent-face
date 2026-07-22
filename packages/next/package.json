@@ -1,6 +1,6 @@
 {
   "name": "@agentface/next",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Next.js integration for AgentFace: the assistant model endpoint as a drop-in route handler",
   "license": "MIT",
   "type": "module",

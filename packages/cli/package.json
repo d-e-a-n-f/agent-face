@@ -1,6 +1,6 @@
 {
   "name": "@agentface/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "AgentFace CLI: init, doctor, and manifest generation",
   "license": "MIT",
   "type": "module",
