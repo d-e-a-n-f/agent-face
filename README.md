@@ -80,6 +80,14 @@ Dependency graph is strictly acyclic: `core → policy → runtime → {react,
 testing, devtools, assistant} → next`. Not yet published to npm — consumed as
 a pnpm workspace today.
 
+## Using a coding agent?
+
+`skills/agentface/SKILL.md` teaches Claude Code (and other coding agents)
+how to instrument an app with AgentFace correctly — domain actions not DOM,
+sensitivity and confirmation choices, previews, revisions, deterministic
+tests, and `agentface doctor` verification. Point your agent at it before
+asking for AgentFace work.
+
 ## Development
 
 ```bash

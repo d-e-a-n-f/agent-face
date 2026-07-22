@@ -17,6 +17,7 @@ const sidebars: SidebarsConfig = {
         "guides/assistant",
         "guides/recommendations",
         "guides/knowledge-and-navigation",
+        "guides/auth-recipes",
         "guides/testing",
       ],
     },
