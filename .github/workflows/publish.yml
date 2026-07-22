@@ -18,7 +18,12 @@ permissions:
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Version packages')
+    # Fires on the Version packages PR merge regardless of merge style:
+    # squash keeps the PR title, a merge commit names the release branch.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, 'Version packages') ||
+      contains(github.event.head_commit.message, 'changeset-release/main')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
