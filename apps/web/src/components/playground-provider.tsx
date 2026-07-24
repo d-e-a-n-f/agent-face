@@ -34,6 +34,10 @@ export function PlaygroundProvider({
         maxIterations: 16,
         ...(mockAdapter !== null ? { adapter: mockAdapter } : {}),
       }}
+      // Off during normal dev so demo tooling (DemoGraph) doesn't wander
+      // into the panel; on under the e2e mock flag — several specs operate
+      // capabilities through DevTools.
+      devtools={mockEnabled}
     >
       {children}
     </AgentFaceApp>

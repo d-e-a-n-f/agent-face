@@ -12,7 +12,7 @@ test("assistant creates, fills, and sends a client invoice across pages", async 
   page,
 }) => {
   await page.goto("/portal");
-  await page.getByRole("button", { name: "Open assistant" }).click();
+  await page.getByRole("button", { name: "Assistant ✦" }).click();
   await page.getByLabel("Assistant instruction").fill(INSTRUCTION);
   await page.getByRole("button", { name: "Send", exact: true }).click();
 
@@ -42,7 +42,7 @@ test("assistant creates, fills, and sends a client invoice across pages", async 
 
 test("declining the send leaves the invoice a draft", async ({ page }) => {
   await page.goto("/portal/clients/wilshire");
-  await page.getByRole("button", { name: "Open assistant" }).click();
+  await page.getByRole("button", { name: "Assistant ✦" }).click();
   await page.getByLabel("Assistant instruction").fill(INSTRUCTION);
   await page.getByRole("button", { name: "Send", exact: true }).click();
 

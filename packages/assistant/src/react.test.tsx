@@ -162,7 +162,8 @@ describe("AgentFaceAssistant widget", () => {
       </AgentFaceProvider>,
     );
     expect(screen.queryByLabelText("Assistant instruction")).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Open assistant" }));
+    // The launcher's accessible name is its visible text: "<title> ✦".
+    await user.click(screen.getByRole("button", { name: "Ask Acme ✦" }));
 
     // The app declared send as the recommended next step.
     const chip = await screen.findByTestId("assistant-suggestion");

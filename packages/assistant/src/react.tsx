@@ -467,7 +467,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
   return (
     <div style={floatStyle(position)}>
       {open ? (
-        <div style={styles.panel}>
+        <div style={styles.panel} data-testid="agentface-assistant-panel">
           <div style={styles.header}>
             <span>{title}</span>
             <span>
@@ -485,6 +485,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
                 <button
                   type="button"
                   style={styles.headerButton}
+                  data-testid="agentface-assistant-clear"
                   aria-label="Clear conversation"
                   title="Clear conversation"
                   onClick={assistant.reset}
@@ -495,6 +496,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
               <button
                 type="button"
                 style={styles.headerButton}
+                data-testid="agentface-assistant-close"
                 aria-label="Close assistant"
                 onClick={() => setOpen(false)}
               >
@@ -591,6 +593,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
                 <button
                   type="button"
                   style={styles.confirmButton}
+                  data-testid="agentface-assistant-confirm"
                   onClick={assistant.confirm}
                 >
                   Confirm
@@ -598,6 +601,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
                 <button
                   type="button"
                   style={styles.declineButton}
+                  data-testid="agentface-assistant-decline"
                   onClick={assistant.decline}
                 >
                   Decline
@@ -625,6 +629,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
 
           <div style={styles.inputRow}>
             <input
+              data-testid="agentface-assistant-input"
               style={{
                 ...styles.input,
                 ...(locked ? { opacity: 0.5, background: "#f4f3f8" } : {}),
@@ -654,6 +659,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
                   background: "#fff",
                   color: "#4b3fb5",
                 }}
+                data-testid="agentface-assistant-stop"
                 aria-label="Stop the assistant"
                 onClick={assistant.cancel}
               >
@@ -663,6 +669,7 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
               <button
                 type="button"
                 style={styles.sendButton}
+                data-testid="agentface-assistant-send"
                 onClick={() => void submit()}
               >
                 Send
@@ -671,10 +678,13 @@ export function AgentFaceAssistant(props: AgentFaceAssistantProps): ReactNode {
           </div>
         </div>
       ) : (
+        // No aria-label: the accessible name must match the visible text
+        // (WCAG label-in-name), which also makes the launcher findable by
+        // automation that derives locators from what it sees.
         <button
           type="button"
           style={styles.launcher}
-          aria-label="Open assistant"
+          data-testid="agentface-assistant-launcher"
           onClick={() => setOpen(true)}
         >
           {title} ✦

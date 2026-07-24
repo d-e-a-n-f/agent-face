@@ -10,7 +10,7 @@ test("assistant onboards a prospect across pages without submitting", async ({
   page,
 }) => {
   await page.goto("/portal/clients");
-  await page.getByRole("button", { name: "Open assistant" }).click();
+  await page.getByRole("button", { name: "Assistant ✦" }).click();
 
   await page
     .getByLabel("Assistant instruction")

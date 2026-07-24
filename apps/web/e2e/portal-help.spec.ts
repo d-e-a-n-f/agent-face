@@ -9,7 +9,7 @@ test("assistant answers questions from the app's help content", async ({
   page,
 }) => {
   await page.goto("/portal");
-  await page.getByRole("button", { name: "Open assistant" }).click();
+  await page.getByRole("button", { name: "Assistant ✦" }).click();
   await page
     .getByLabel("Assistant instruction")
     .fill("How do discounts work on invoices?");
