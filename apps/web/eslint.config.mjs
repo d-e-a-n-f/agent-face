@@ -21,6 +21,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The e2e suite's isolated dist dir (see playwright.config.ts):
+    ".next-e2e/**",
   ]),
 ]);
 
