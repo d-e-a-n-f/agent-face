@@ -16,7 +16,7 @@ intent** (`invoice.send`, `product.publish` — never `clickButton`) with typed
 inputs, preconditions, previews, and confirmation rules, and every invocation
 flows through one enforced, auditable lifecycle your application controls.
 
-📖 **Documentation:** [agentface.dev](https://agentface.dev)
+📖 **Documentation:** [d-e-a-n-f.github.io/agent-face](https://d-e-a-n-f.github.io/agent-face/)
 (source in [`apps/docs`](apps/docs); deployed by GitHub Pages).
 
 ```bash
@@ -70,7 +70,7 @@ A working multi-page mini-app — clients, onboarding, invoicing — with
 suggested prompts on the dashboard. Without AWS credentials everything works
 except the live model: the DevTools panel operates every capability by hand.
 See the
-[demo walkthrough](https://agentface.dev/docs/playground).
+[demo walkthrough](https://d-e-a-n-f.github.io/agent-face/docs/playground).
 
 ## Packages
 
@@ -126,4 +126,4 @@ pnpm --filter docs dev       # docs site on :3100
 Deterministic agent scenario evals, React Query and TanStack Table
 adapters, multi-action plans with batch review, undo/compensation,
 OpenTelemetry export, durable approvals — see the
-[roadmap](https://agentface.dev/docs/roadmap).
+[roadmap](https://d-e-a-n-f.github.io/agent-face/docs/roadmap).

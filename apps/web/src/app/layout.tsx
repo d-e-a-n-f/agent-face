@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "agentface playground",
   description:
     "Integration and acceptance-test application for the AgentFace SDK",
-  metadataBase: new URL("https://agentface.dev"),
+  metadataBase: new URL("https://d-e-a-n-f.github.io"),
   openGraph: {
     title: "agentface playground",
     description:

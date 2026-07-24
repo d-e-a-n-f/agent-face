@@ -10,9 +10,9 @@ const config: Config = {
 
   future: { v4: true },
 
-  // Canonical domain (GitHub Pages deployment + custom domain via CNAME).
-  url: "https://agentface.dev",
-  baseUrl: "/",
+  // GitHub Pages project site (no custom domain configured).
+  url: "https://d-e-a-n-f.github.io",
+  baseUrl: "/agent-face/",
   organizationName: "d-e-a-n-f",
   projectName: "agent-face",
   trailingSlash: false,
